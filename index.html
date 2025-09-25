@@ -9,7 +9,6 @@
 <style>
 :root{
   --bg:#efe5da; --card:#fff; --line:#e0d4c7; --ink:#2a231b; --muted:#6f6a62;
-  /* 你的色帶 */
   --c1:#a9735f; --c2:#3f6674; --c3:#8f8a79; --c4:#6b5454; --c5:#819aa6; --c6:#b89b86; --c7:#8a6a3f; --c8:#d3bba7;
   --early:var(--c1); --noon:var(--c7); --night:var(--c2);
   --brand:#6b5844; --brand-600:#5a4a3a;
@@ -18,7 +17,6 @@
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Serif TC","Source Han Serif TC",serif}
 a,button{color:inherit;text-decoration:none;font-family:"Noto Serif TC","Source Han Serif TC",serif}
-
 .container{max-width:980px;margin:18px auto;padding:0 14px}
 .h1{display:flex;align-items:center;gap:10px;font-weight:900;font-size:clamp(22px,4.2vw,32px);color:var(--brand)}
 .badge{background:var(--brand);color:#fff;border-radius:6px;width:42px;height:42px;display:grid;place-items:center;font-weight:900}
@@ -48,17 +46,15 @@ a,button{color:inherit;text-decoration:none;font-family:"Noto Serif TC","Source 
 
 /* 診別方塊 */
 .blk{display:inline-block;border-radius:6px;padding:4px 10px;font-size:.82rem;font-weight:900;color:#fff}
-.blk.early{background:var(--early)}
-.blk.noon {background:var(--noon)}
-.blk.night{background:var(--night)}
+.blk.early{background:var(--early)} .blk.noon{background:var(--noon)} .blk.night{background:var(--night)}
 .blk.off{filter:grayscale(70%);opacity:.45}
 
-/* 小型月曆內 Loading（只蓋月曆，不遮全頁） */
+/* 月曆內小型 Loading（只蓋月曆） */
 #calLoading{
-  position:absolute; inset:auto 0 0 0; /* 蓋在日曆上方區域 */
+  position:absolute; inset:40px 12px 12px 12px; /* 內縮避免遮標題 */
   display:none; align-items:center; justify-content:center;
   background:rgba(239,229,218,.55); backdrop-filter:blur(1px);
-  height:100%; border-radius:6px;
+  border-radius:6px;
 }
 .cal-wrap.loading #calLoading{display:flex}
 .loader{display:flex;gap:10px;align-items:center;border:1px solid var(--line);background:#fff;padding:8px 12px;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.06)}
@@ -70,8 +66,6 @@ a,button{color:inherit;text-decoration:none;font-family:"Noto Serif TC","Source 
 .slot .tag{padding:3px 10px;color:#fff;border-radius:6px;font-weight:900}
 .slot .tag.early{background:var(--early)} .slot .tag.noon{background:var(--noon)} .slot .tag.night{background:var(--night)}
 .slot .remain{margin-left:auto;color:#5a5248}
-
-/* 15 分鐘方塊 */
 .caps{margin:8px 0 14px 0;display:flex;flex-wrap:wrap;gap:8px}
 .caps button{border:1px solid var(--slot-bd);background:var(--slot-bg);border-radius:6px;padding:.55rem .9rem;font-weight:800;cursor:pointer}
 .caps button[aria-pressed="true"]{background:#c7ad96;border-color:#a88d73}
@@ -90,7 +84,7 @@ a,button{color:inherit;text-decoration:none;font-family:"Noto Serif TC","Source 
   <div class="section">
     <div class="tt">請先選擇醫師（可複選）</div>
     <div class="filters" id="docFilters"></div>
-    <div class="note">載入時月曆僅顯示日期；成功載入後會補上診別方塊。</div>
+    <div class="note">載入時月曆僅顯示日期；成功載入後一次顯示診別方塊。</div>
   </div>
 
   <div class="section cal-wrap" id="calWrap">
@@ -99,7 +93,7 @@ a,button{color:inherit;text-decoration:none;font-family:"Noto Serif TC","Source 
     <div class="grid7" id="days"></div>
 
     <div id="calLoading">
-      <div class="loader"><div class="spin"></div><div>載入中…</div></div>
+      <div class="loader"><div class="spin"></div><div id="calLoadText">載入中…</div></div>
     </div>
 
     <div class="tt" style="margin-top:12px">當日可預約（醫師 → 診別 → 15 分鐘）</div>
@@ -127,10 +121,10 @@ const SCRIPT_URL='https://script.google.com/macros/s/AKfycbz_fnt6dQecRhcox9qi-Hw
 const W=['日','一','二','三','四','五','六'];
 const LABELS={early:'早診', noon:'午診', night:'晚診'};
 const $=s=>document.querySelector(s);
-const $docFilters=$('#docFilters'), $wd=$('#wdRow'), $days=$('#days'), $groups=$('#slotGroups'), $calWrap=$('#calWrap');
-const state={doctors:new Set(), date:null, chosen:null, range:null, doctorsMaster:[], monthSummaryCache:{}};
+const $docFilters=$('#docFilters'), $wd=$('#wdRow'), $days=$('#days'), $groups=$('#slotGroups'), $calWrap=$('#calWrap'), $calText=$('#calLoadText');
+const state={doctors:new Set(), date:null, chosen:null, range:null, doctorsMaster:[], dayCache:{}}; // dayCache['YYYY-MM-DD|docA,docB']=slots[]
 const todayStr = ymd(new Date());
-let summaryAbort = null; // 用於取消舊請求
+let inFlightController=null;
 
 /* Utils */
 function pad2(n){return String(n).padStart(2,'0')}
@@ -138,30 +132,27 @@ function ymd(d){return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getD
 function firstOfMonth(d){return new Date(d.getFullYear(),d.getMonth(),1)}
 function endOfMonth(d){return new Date(d.getFullYear(),d.getMonth()+1,0)}
 function fmtROC(dateStr){const [y,m,d]=dateStr.split('-').map(Number);const dt=new Date(y,m-1,d);return `${y}/${pad2(m)}/${pad2(d)}（週${W[dt.getDay()]}）`}
-function calLoading(on){ $calWrap.classList.toggle('loading', !!on) }
+function calLoading(on,msg){ $calWrap.classList.toggle('loading',!!on); if(msg) $calText.textContent=msg; }
 
-async function api(action, params={}, options={}){
+/* API */
+async function api(action, params={}, signal){
   const url=new URL(SCRIPT_URL);
   Object.entries({action,...params}).forEach(([k,v])=>url.searchParams.set(k,Array.isArray(v)?v.join(','):v));
-  const r=await fetch(url.toString(), options); if(!r.ok) throw new Error('network'); return r.json();
+  const r=await fetch(url.toString(),{signal}); if(!r.ok) throw new Error('network'); return r.json();
 }
 
 /* Boot */
 async function boot(){
-  // 先畫星期與月曆殼（只有日期數字）
   $wd.innerHTML=W.map(w=>`<div class="wd">${w}</div>`).join('');
-  drawCalendarShell();
-
+  drawCalendarShell();  // 殼先畫（只有日期）
   const conf = await api('init');
   state.range = conf.range;
   state.doctorsMaster = conf.doctors||[];
   $('#rangeNote').textContent=`可預約日：${fmtROC(conf.range.start)} ～ ${fmtROC(conf.range.end)}`;
   renderDoctorChips();
-
-  // 預設不選任何醫師 → 月曆先保持空白診別
 }
 
-/* 月曆殼（只放日期，不放診別） */
+/* 殼：只有日期，不顯示診別 */
 function drawCalendarShell(){
   const base=new Date(); const first=firstOfMonth(base), last=endOfMonth(base), pad=first.getDay();
   let html=''; for(let i=0;i<pad;i++) html+=`<div class="day"></div>`;
@@ -179,7 +170,7 @@ function drawCalendarShell(){
   $days.innerHTML=html;
 }
 
-/* 醫師 chips（含皆可），切換時：清空診別→顯示小 loading→載入後補上 */
+/* 醫師 chips（含皆可；不預設勾選） */
 function renderDoctorChips(){
   $docFilters.innerHTML='';
   // 皆可
@@ -187,76 +178,86 @@ function renderDoctorChips(){
   allBtn.type='button'; allBtn.className='chip'; allBtn.textContent='皆可';
   const allPressed = state.doctors.size===state.doctorsMaster.length && state.doctorsMaster.length>0;
   if(allPressed) allBtn.setAttribute('aria-pressed','true');
-  allBtn.onclick=()=>toggleAllDoctors(!allPressed);
+  allBtn.onclick=()=>toggleAll(!allPressed);
   $docFilters.appendChild(allBtn);
-
   // 個別
   state.doctorsMaster.forEach(name=>{
-    const b=document.createElement('button');
-    b.type='button'; b.className='chip'; b.textContent=name;
+    const b=document.createElement('button'); b.type='button'; b.className='chip'; b.textContent=name;
     if(state.doctors.has(name)) b.setAttribute('aria-pressed','true');
-    b.onclick=()=>toggleDoctor(name);
+    b.onclick=()=>toggleOne(name);
     $docFilters.appendChild(b);
   });
 }
+async function toggleAll(sel){ state.doctors = sel? new Set(state.doctorsMaster): new Set(); state.date=null; state.chosen=null; renderDoctorChips(); await loadMonthDiagnoses(); renderGroups(); renderChosen(); }
+async function toggleOne(name){ (state.doctors.has(name)?state.doctors.delete(name):state.doctors.add(name)); state.date=null; state.chosen=null; renderDoctorChips(); await loadMonthDiagnoses(); renderGroups(); renderChosen(); }
 
-async function toggleAllDoctors(selectAll){
-  state.doctors = selectAll ? new Set(state.doctorsMaster) : new Set();
-  state.date=null; state.chosen=null;
-  renderDoctorChips();
-  await refreshMonthSummaryAndFill();
-  renderGroups(); renderChosen();
-}
-
-async function toggleDoctor(name){
-  (state.doctors.has(name)?state.doctors.delete(name):state.doctors.add(name));
-  state.date=null; state.chosen=null;
-  renderDoctorChips();
-  await refreshMonthSummaryAndFill();
-  renderGroups(); renderChosen();
-}
-
-/* 只更新診別（不重畫整個月曆殼） */
-async function refreshMonthSummaryAndFill(){
-  // 先清空所有診別
+/* 逐日抓 slots（並發限制 + 可取消）。載入時不顯示診別；全部拿到再一起填入。 */
+async function loadMonthDiagnoses(){
+  // 清空診別
   $days.querySelectorAll('.meta').forEach(m=>m.innerHTML='');
-  // 如果沒有任何醫師，就不請求，直接結束
-  if(state.doctors.size===0) return;
 
-  // 顯示月曆內小型 loading
-  calLoading(true);
+  if(state.doctors.size===0) return;  // 未選醫師 → 不載資料
 
-  // 取消上一個還在跑的 summary 請求
-  if(summaryAbort) summaryAbort.abort();
-  summaryAbort = new AbortController();
+  // 取消上一輪請求
+  if(inFlightController) inFlightController.abort();
+  inFlightController = new AbortController();
 
-  const base=new Date(); const start=ymd(firstOfMonth(base)), end=ymd(endOfMonth(base));
-  const cacheKey = start+'_'+end+'_'+[...state.doctors].sort().join('|');
-  let data = state.monthSummaryCache[cacheKey];
-
+  calLoading(true,'載入中…');
   try{
-    if(!data){
-      const res = await api('summary',{start,end,doctors:[...state.doctors]}, {signal: summaryAbort.signal});
-      data = res.days || {};
-      state.monthSummaryCache[cacheKey]=data;
+    const base=new Date(); const first=firstOfMonth(base), last=endOfMonth(base);
+    const keys=[]; for(let d=1; d<=last.getDate(); d++){ keys.push( ymd(new Date(first.getFullYear(),first.getMonth(),d)) ); }
+
+    const doctorKey=[...state.doctors].sort().join(',');
+    const results={}; let done=0;
+    const limit=6; // 並發限制
+    const queue=[...keys];
+
+    async function worker(){
+      while(queue.length){
+        const date=queue.shift();
+        // 超出可約區間也要顯示（但會是灰），這裡仍照樣建空資料
+        if(state.range && (date<state.range.start || date>state.range.end)){ results[date]={}; done++; $calText.textContent=`載入中… ${done}/${keys.length}`; continue; }
+
+        const cacheKey=date+'|'+doctorKey;
+        if(state.dayCache[cacheKey]){ results[date]=state.dayCache[cacheKey]; done++; $calText.textContent=`載入中… ${done}/${keys.length}`; continue; }
+
+        try{
+          const res=await api('slots',{date,doctors:[...state.doctors]}, inFlightController.signal);
+          // 轉為 {early:remain, noon:remain, night:remain}（存在即顯示；remain 用來決定是否 off）
+          const obj={};
+          (res.groups||[]).forEach(g=>{
+            const k = g.label.includes('早')?'early':(g.label.includes('午')?'noon':'night');
+            obj[k]=g.remain; // 可能為 0
+          });
+          state.dayCache[cacheKey]=obj;
+          results[date]=obj;
+        }catch(e){
+          if(e.name==='AbortError') return; // 被取消
+          results[date]={};
+        }finally{
+          done++; $calText.textContent=`載入中… ${done}/${keys.length}`;
+        }
+      }
     }
-    fillDiagnoses(data);
-  }catch(e){
-    if(e.name!=='AbortError') console.error(e);
+    const workers=[]; for(let i=0;i<limit;i++) workers.push(worker());
+    await Promise.all(workers);
+
+    // 全部拿到 → 一次填入診別
+    fillDiagnoses(results);
   }finally{
     calLoading(false);
   }
 }
 
-/* 把診別填進既有日格 */
-function fillDiagnoses(daysMap){
+/* 把診別填進日格（一次性） */
+function fillDiagnoses(map){
   const inRange = state.range;
   $days.querySelectorAll('.day').forEach(el=>{
-    const key=el.dataset.ymd; const meta=el.querySelector('.meta'); if(!meta) return;
+    const key=el.dataset.ymd, meta=el.querySelector('.meta'); if(!meta) return;
     meta.innerHTML='';
-    const s = daysMap[key] || {};
+    const s = map[key] || {};
     const isPast = key<todayStr;
-    const isInRange = inRange && key>=inRange.start && key<=inRange.end;
+    const isInRange = !inRange || (key>=inRange.start && key<=inRange.end);
     const hasAny = Object.keys(s).length>0;
     if(!hasAny) return;
     ['early','noon','night'].forEach(k=>{
@@ -268,23 +269,21 @@ function fillDiagnoses(daysMap){
       span.textContent=lab;
       meta.appendChild(span);
     });
-    // 更新可點狀態
     el.classList.remove('clickable');
     if(!isPast && isInRange) el.classList.add('clickable');
   });
 
-  // 綁事件（過期不可點）
+  // 點日期
   $days.querySelectorAll('.day.clickable').forEach(el=>{
     el.onclick=()=>{ $days.querySelectorAll('.day').forEach(x=>x.style.boxShadow='none'); el.style.boxShadow='0 0 0 2px #dcccb9';
       state.date=el.dataset.ymd; state.chosen=null; renderGroups(); renderChosen(); };
   });
 }
 
-/* 當日可預約 */
+/* 當日可預約（沿用 slots） */
 async function renderGroups(){
   $groups.innerHTML='';
   if(!state.date || state.doctors.size===0){ $groups.innerHTML='<div class="note">請先選擇醫師，並點選日期。</div>'; return; }
-  // 小載入只在月曆，因此這裡不顯示遮罩；直接請求
   const res=await api('slots',{date:state.date, doctors:[...state.doctors]});
   if(!res.groups.length){ $groups.innerHTML='<div class="note">當日無可預約時段或已額滿。</div>'; return; }
   res.groups.forEach(g=>{
@@ -305,7 +304,7 @@ async function renderGroups(){
   });
 }
 
-/* 已選摘要 & 送出 */
+/* 已選摘要 & 送出（和前版相同邏輯） */
 function renderChosen(){
   const box=$('#chosen'); const name=$('#name').value.trim();
   if(!state.chosen){ box.textContent='尚未選擇'; return; }
@@ -334,15 +333,14 @@ $('#submit').onclick=async ()=>{
   const r=await fetch(url.toString(),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(req)});
   const data=await r.json();
   if(data.ok){ alert(`預約成功！\n您的號碼：第 ${data.no} 號`); } else { alert(`預約失敗：${data.msg||'未知錯誤'}`); }
-  // 送出後刷新當月診別（避免畫面不同步）
-  await refreshMonthSummaryAndFill(); renderGroups();
+  // 刷新當月診別（避免畫面不同步）
+  await loadMonthDiagnoses(); renderGroups();
 };
-
-/* helpers */
-function debounce(fn,ms){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms)}}
 
 /* 啟動 */
 boot().catch(err=>{console.error(err); alert('初始化失敗，請稍後再試');});
+
+/* ======= 你可以在之後加上下/上一月導覽；目前只載當月 ======= */
 </script>
 </body>
 </html>
