@@ -31,11 +31,11 @@ a,button{color:inherit;text-decoration:none;font-family:"Noto Serif TC","Source 
 
 /* 月曆 */
 .cal-wrap{position:relative}
-.grid7{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
+.grid7{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px}
 .wd{color:#8b8379;text-align:center;font-weight:800;font-size:.88rem}
 .day{
   min-height:100px;background:#fff;border:1px solid var(--line);border-radius:6px;
-  display:flex;flex-direction:column;align-items:center;gap:8px;padding:8px;transition:box-shadow .15s ease;
+  display:flex;flex-direction:column;align-items:center;gap:8px;padding:8px;transition:box-shadow .15s ease;overflow:hidden
 }
 .day.clickable{cursor:pointer}
 .day.clickable:hover{box-shadow:0 0 0 2px #dcccb9}
@@ -45,20 +45,20 @@ a,button{color:inherit;text-decoration:none;font-family:"Noto Serif TC","Source 
 .meta{text-align:center;min-height:64px;display:flex;flex-direction:column;gap:6px;align-items:center;justify-content:flex-start}
 
 /* 診別方塊 */
-.blk{display:inline-block;border-radius:6px;padding:4px 10px;font-size:.82rem;font-weight:900;color:#fff}
+.blk{display:inline-block;border-radius:6px;padding:4px 10px;font-size:.82rem;font-weight:900;color:#fff;line-height:1}
 .blk.early{background:var(--early)} .blk.noon{background:var(--noon)} .blk.night{background:var(--night)}
 .blk.off{filter:grayscale(70%);opacity:.45}
 
-/* 月曆內小型 Loading（只蓋月曆） */
+/* ✅ 月曆內的轉圈圈（只蓋月曆，非全頁） */
 #calLoading{
-  position:absolute; inset:40px 12px 12px 12px; /* 內縮避免遮標題 */
+  position:absolute; inset:40px 12px 12px 12px;
   display:none; align-items:center; justify-content:center;
   background:rgba(239,229,218,.55); backdrop-filter:blur(1px);
   border-radius:6px;
 }
 .cal-wrap.loading #calLoading{display:flex}
-.loader{display:flex;gap:10px;align-items:center;border:1px solid var(--line);background:#fff;padding:8px 12px;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.06)}
-.spin{width:18px;height:18px;border:3px solid #e8dccc;border-top-color:#5a4a3a;border-radius:50%;animation:sp .8s linear infinite}
+.loader{display:flex;gap:10px;align-items:center;border:1px solid var(--line);background:#fff;padding:10px 14px;border-radius:999px;box-shadow:0 8px 24px rgba(0,0,0,.06)}
+.spin{width:20px;height:20px;border:3px solid #e8dccc;border-top-color:#5a4a3a;border-radius:50%;animation:sp .8s linear infinite}
 @keyframes sp{to{transform:rotate(360deg)}}
 
 /* 當日詳情 */
@@ -75,6 +75,18 @@ a,button{color:inherit;text-decoration:none;font-family:"Noto Serif TC","Source 
 .input{border:1px solid var(--line);border-radius:6px;height:46px;padding:0 .9rem;background:#fff}
 .chosen{border:1px dashed #d9c9b6;background:#faf5ef;padding:12px;font-weight:800;display:flex;flex-wrap:wrap;gap:8px;align-items:center;border-radius:6px}
 .chosen .tag{border:1px solid #e0d2c1;padding:.35rem .7rem;background:#fff;border-radius:6px}
+
+/* ======= Mobile 調整 ======= */
+@media (max-width:600px){
+  .container{padding:0 8px}
+  .grid7{gap:4px}
+  .day{min-height:76px;padding:6px}
+  .meta{min-height:44px}
+  .blk{padding:2px 6px;font-size:.78rem}
+  /* 只顯示「早 / 午 / 晚」：把字塞在 data-s，用偽元素顯示 */
+  .blk .txt{display:none}
+  .blk::after{content:attr(data-s);font-weight:900}
+}
 </style>
 </head>
 <body>
@@ -92,6 +104,7 @@ a,button{color:inherit;text-decoration:none;font-family:"Noto Serif TC","Source 
     <div class="grid7" id="wdRow"></div>
     <div class="grid7" id="days"></div>
 
+    <!-- 只蓋月曆區的轉圈圈 -->
     <div id="calLoading">
       <div class="loader"><div class="spin"></div><div id="calLoadText">載入中…</div></div>
     </div>
@@ -119,10 +132,9 @@ a,button{color:inherit;text-decoration:none;font-family:"Noto Serif TC","Source 
 <script>
 const SCRIPT_URL='https://script.google.com/macros/s/AKfycbz_fnt6dQecRhcox9qi-HwCudLvsp22yofY8KPGkoCkaoa_PYzckYq1NYpTAPKWkxw/exec'; // ← 換成 GAS 網址
 const W=['日','一','二','三','四','五','六'];
-const LABELS={early:'早診', noon:'午診', night:'晚診'};
 const $=s=>document.querySelector(s);
 const $docFilters=$('#docFilters'), $wd=$('#wdRow'), $days=$('#days'), $groups=$('#slotGroups'), $calWrap=$('#calWrap'), $calText=$('#calLoadText');
-const state={doctors:new Set(), date:null, chosen:null, range:null, doctorsMaster:[], dayCache:{}}; // dayCache['YYYY-MM-DD|docA,docB']=slots[]
+const state={doctors:new Set(), date:null, chosen:null, range:null, doctorsMaster:[], dayCache:{}}; // dayCache['YYYY-MM-DD|docA,docB']= {early:n, noon:n, night:n}
 const todayStr = ymd(new Date());
 let inFlightController=null;
 
@@ -144,7 +156,7 @@ async function api(action, params={}, signal){
 /* Boot */
 async function boot(){
   $wd.innerHTML=W.map(w=>`<div class="wd">${w}</div>`).join('');
-  drawCalendarShell();  // 殼先畫（只有日期）
+  drawCalendarShell();  // 只有日期
   const conf = await api('init');
   state.range = conf.range;
   state.doctorsMaster = conf.doctors||[];
@@ -152,7 +164,7 @@ async function boot(){
   renderDoctorChips();
 }
 
-/* 殼：只有日期，不顯示診別 */
+/* 只畫日期殼 */
 function drawCalendarShell(){
   const base=new Date(); const first=firstOfMonth(base), last=endOfMonth(base), pad=first.getDay();
   let html=''; for(let i=0;i<pad;i++) html+=`<div class="day"></div>`;
@@ -191,14 +203,12 @@ function renderDoctorChips(){
 async function toggleAll(sel){ state.doctors = sel? new Set(state.doctorsMaster): new Set(); state.date=null; state.chosen=null; renderDoctorChips(); await loadMonthDiagnoses(); renderGroups(); renderChosen(); }
 async function toggleOne(name){ (state.doctors.has(name)?state.doctors.delete(name):state.doctors.add(name)); state.date=null; state.chosen=null; renderDoctorChips(); await loadMonthDiagnoses(); renderGroups(); renderChosen(); }
 
-/* 逐日抓 slots（並發限制 + 可取消）。載入時不顯示診別；全部拿到再一起填入。 */
+/* 逐日抓 slots（並發限制 + 可取消）。載入時先顯示 spinner，全部拿到才一起填入診別 */
 async function loadMonthDiagnoses(){
   // 清空診別
   $days.querySelectorAll('.meta').forEach(m=>m.innerHTML='');
+  if(state.doctors.size===0) return;
 
-  if(state.doctors.size===0) return;  // 未選醫師 → 不載資料
-
-  // 取消上一輪請求
   if(inFlightController) inFlightController.abort();
   inFlightController = new AbortController();
 
@@ -215,24 +225,21 @@ async function loadMonthDiagnoses(){
     async function worker(){
       while(queue.length){
         const date=queue.shift();
-        // 超出可約區間也要顯示（但會是灰），這裡仍照樣建空資料
         if(state.range && (date<state.range.start || date>state.range.end)){ results[date]={}; done++; $calText.textContent=`載入中… ${done}/${keys.length}`; continue; }
-
         const cacheKey=date+'|'+doctorKey;
         if(state.dayCache[cacheKey]){ results[date]=state.dayCache[cacheKey]; done++; $calText.textContent=`載入中… ${done}/${keys.length}`; continue; }
-
         try{
           const res=await api('slots',{date,doctors:[...state.doctors]}, inFlightController.signal);
-          // 轉為 {early:remain, noon:remain, night:remain}（存在即顯示；remain 用來決定是否 off）
           const obj={};
           (res.groups||[]).forEach(g=>{
-            const k = g.label.includes('早')?'early':(g.label.includes('午')?'noon':'night');
-            obj[k]=g.remain; // 可能為 0
+            const k = g.label.includes('早')?'early':(g.label.includes('午')?'noon':'夜'); // 有些會寫晚/夜
+            const kk = (k==='夜'?'night':k);
+            obj[kk]=g.remain;
           });
           state.dayCache[cacheKey]=obj;
           results[date]=obj;
         }catch(e){
-          if(e.name==='AbortError') return; // 被取消
+          if(e.name==='AbortError') return;
           results[date]={};
         }finally{
           done++; $calText.textContent=`載入中… ${done}/${keys.length}`;
@@ -242,14 +249,13 @@ async function loadMonthDiagnoses(){
     const workers=[]; for(let i=0;i<limit;i++) workers.push(worker());
     await Promise.all(workers);
 
-    // 全部拿到 → 一次填入診別
     fillDiagnoses(results);
   }finally{
     calLoading(false);
   }
 }
 
-/* 把診別填進日格（一次性） */
+/* 一次把診別塞進日格；手機只顯示 早/午/晚（用 data-s） */
 function fillDiagnoses(map){
   const inRange = state.range;
   $days.querySelectorAll('.day').forEach(el=>{
@@ -260,15 +266,18 @@ function fillDiagnoses(map){
     const isInRange = !inRange || (key>=inRange.start && key<=inRange.end);
     const hasAny = Object.keys(s).length>0;
     if(!hasAny) return;
-    ['early','noon','night'].forEach(k=>{
+
+    [['early','早'],['noon','午'],['night','晚']].forEach(([k,shortC])=>{
       if(s[k]===undefined) return;
       const off = (s[k]===0) || isPast || !isInRange;
       const lab = (k==='early'?'早診':k==='noon'?'午診':'晚診');
       const span=document.createElement('span');
       span.className='blk '+k+(off?' off':'');
-      span.textContent=lab;
+      span.dataset.s=shortC;                 // 手機用短字
+      span.innerHTML=`<span class="txt">${lab}</span>`; // 桌機顯示完整
       meta.appendChild(span);
     });
+
     el.classList.remove('clickable');
     if(!isPast && isInRange) el.classList.add('clickable');
   });
@@ -304,7 +313,7 @@ async function renderGroups(){
   });
 }
 
-/* 已選摘要 & 送出（和前版相同邏輯） */
+/* 已選摘要 & 送出（不改） */
 function renderChosen(){
   const box=$('#chosen'); const name=$('#name').value.trim();
   if(!state.chosen){ box.textContent='尚未選擇'; return; }
@@ -333,14 +342,11 @@ $('#submit').onclick=async ()=>{
   const r=await fetch(url.toString(),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(req)});
   const data=await r.json();
   if(data.ok){ alert(`預約成功！\n您的號碼：第 ${data.no} 號`); } else { alert(`預約失敗：${data.msg||'未知錯誤'}`); }
-  // 刷新當月診別（避免畫面不同步）
   await loadMonthDiagnoses(); renderGroups();
 };
 
 /* 啟動 */
 boot().catch(err=>{console.error(err); alert('初始化失敗，請稍後再試');});
-
-/* ======= 你可以在之後加上下/上一月導覽；目前只載當月 ======= */
 </script>
 </body>
 </html>
