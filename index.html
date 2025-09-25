@@ -44,12 +44,12 @@ a,button{color:inherit;text-decoration:none;font-family:"Noto Serif TC","Source 
 .day .d{font-weight:900;font-size:1.05rem}
 .meta{text-align:center;min-height:64px;display:flex;flex-direction:column;gap:6px;align-items:center;justify-content:flex-start}
 
-/* 診別方塊 */
+/* 診別方塊（小） */
 .blk{display:inline-block;border-radius:6px;padding:4px 10px;font-size:.82rem;font-weight:900;color:#fff;line-height:1}
 .blk.early{background:var(--early)} .blk.noon{background:var(--noon)} .blk.night{background:var(--night)}
 .blk.off{filter:grayscale(70%);opacity:.45}
 
-/* ✅ 月曆內的轉圈圈（只蓋月曆，非全頁） */
+/* 月曆內 loading（只蓋月曆） */
 #calLoading{
   position:absolute; inset:40px 12px 12px 12px;
   display:none; align-items:center; justify-content:center;
@@ -61,31 +61,47 @@ a,button{color:inherit;text-decoration:none;font-family:"Noto Serif TC","Source 
 .spin{width:20px;height:20px;border:3px solid #e8dccc;border-top-color:#5a4a3a;border-radius:50%;animation:sp .8s linear infinite}
 @keyframes sp{to{transform:rotate(360deg)}}
 
-/* 當日詳情 */
-.slot{border:1px solid var(--line);border-radius:6px;padding:12px;background:#fff;display:flex;gap:10px;align-items:center}
-.slot .tag{padding:3px 10px;color:#fff;border-radius:6px;font-weight:900}
-.slot .tag.early{background:var(--early)} .slot .tag.noon{background:var(--noon)} .slot .tag.night{background:var(--night)}
-.slot .remain{margin-left:auto;color:#5a5248}
-.caps{margin:8px 0 14px 0;display:flex;flex-wrap:wrap;gap:8px}
+/* ============ 當日可預約：兩段式（手風琴） ============ */
+/* 閉合狀態的卡片 */
+.acc-item{border:1px solid var(--line);border-radius:10px;background:#fff;overflow:hidden}
+.acc-head{
+  display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;
+}
+.acc-head .doc{font-weight:900}
+.acc-head .tag{padding:3px 10px;color:#fff;border-radius:6px;font-weight:900}
+.acc-head .tag.early{background:var(--early)} .acc-head .tag.noon{background:var(--noon)} .acc-head .tag.night{background:var(--night)}
+.acc-head .range{color:#5a5248}
+.acc-head .remain{margin-left:auto;color:#5a5248;font-weight:700}
+.acc-head .chev{width:10px;height:10px;border-right:2px solid #7b6b58;border-bottom:2px solid #7b6b58;transform:rotate(-45deg);transition:.18s}
+
+/* 展開狀態 */
+.acc-item.open .acc-head{background:#faf5ef}
+.acc-item.open .acc-head .chev{transform:rotate(45deg)}
+.acc-body{display:none;padding:0 14px 12px 14px}
+.acc-item.open .acc-body{display:block}
+
+/* 15 分鐘方塊 */
+.caps{margin-top:8px;display:flex;flex-wrap:wrap;gap:8px}
 .caps button{border:1px solid var(--slot-bd);background:var(--slot-bg);border-radius:6px;padding:.55rem .9rem;font-weight:800;cursor:pointer}
 .caps button[aria-pressed="true"]{background:#c7ad96;border-color:#a88d73}
 
-/* 表單 & 已選 */
+/* 已選 */
 .form{display:grid;gap:12px}
 .input{border:1px solid var(--line);border-radius:6px;height:46px;padding:0 .9rem;background:#fff}
 .chosen{border:1px dashed #d9c9b6;background:#faf5ef;padding:12px;font-weight:800;display:flex;flex-wrap:wrap;gap:8px;align-items:center;border-radius:6px}
 .chosen .tag{border:1px solid #e0d2c1;padding:.35rem .7rem;background:#fff;border-radius:6px}
 
-/* ======= Mobile 調整 ======= */
+/* Mobile：月曆縮小、診別顯示短字 */
 @media (max-width:600px){
   .container{padding:0 8px}
   .grid7{gap:4px}
   .day{min-height:76px;padding:6px}
   .meta{min-height:44px}
   .blk{padding:2px 6px;font-size:.78rem}
-  /* 只顯示「早 / 午 / 晚」：把字塞在 data-s，用偽元素顯示 */
   .blk .txt{display:none}
   .blk::after{content:attr(data-s);font-weight:900}
+  .acc-head{padding:10px 12px}
+  .acc-body{padding:0 12px 10px 12px}
 }
 </style>
 </head>
@@ -110,7 +126,7 @@ a,button{color:inherit;text-decoration:none;font-family:"Noto Serif TC","Source 
     </div>
 
     <div class="tt" style="margin-top:12px">當日可預約（醫師 → 診別 → 15 分鐘）</div>
-    <div id="slotGroups" style="display:grid;gap:12px"></div>
+    <div id="slotGroups" style="display:grid;gap:10px"></div>
   </div>
 
   <div class="section">
@@ -205,7 +221,6 @@ async function toggleOne(name){ (state.doctors.has(name)?state.doctors.delete(na
 
 /* 逐日抓 slots（並發限制 + 可取消）。載入時先顯示 spinner，全部拿到才一起填入診別 */
 async function loadMonthDiagnoses(){
-  // 清空診別
   $days.querySelectorAll('.meta').forEach(m=>m.innerHTML='');
   if(state.doctors.size===0) return;
 
@@ -219,8 +234,7 @@ async function loadMonthDiagnoses(){
 
     const doctorKey=[...state.doctors].sort().join(',');
     const results={}; let done=0;
-    const limit=6; // 並發限制
-    const queue=[...keys];
+    const limit=6; const queue=[...keys];
 
     async function worker(){
       while(queue.length){
@@ -232,9 +246,8 @@ async function loadMonthDiagnoses(){
           const res=await api('slots',{date,doctors:[...state.doctors]}, inFlightController.signal);
           const obj={};
           (res.groups||[]).forEach(g=>{
-            const k = g.label.includes('早')?'early':(g.label.includes('午')?'noon':'夜'); // 有些會寫晚/夜
-            const kk = (k==='夜'?'night':k);
-            obj[kk]=g.remain;
+            const k = g.label.includes('早')?'early':(g.label.includes('午')?'noon':'night');
+            obj[k]=g.remain;
           });
           state.dayCache[cacheKey]=obj;
           results[date]=obj;
@@ -273,8 +286,8 @@ function fillDiagnoses(map){
       const lab = (k==='early'?'早診':k==='noon'?'午診':'晚診');
       const span=document.createElement('span');
       span.className='blk '+k+(off?' off':'');
-      span.dataset.s=shortC;                 // 手機用短字
-      span.innerHTML=`<span class="txt">${lab}</span>`; // 桌機顯示完整
+      span.dataset.s=shortC;
+      span.innerHTML=`<span class="txt">${lab}</span>`;
       meta.appendChild(span);
     });
 
@@ -282,38 +295,66 @@ function fillDiagnoses(map){
     if(!isPast && isInRange) el.classList.add('clickable');
   });
 
-  // 點日期
   $days.querySelectorAll('.day.clickable').forEach(el=>{
     el.onclick=()=>{ $days.querySelectorAll('.day').forEach(x=>x.style.boxShadow='none'); el.style.boxShadow='0 0 0 2px #dcccb9';
       state.date=el.dataset.ymd; state.chosen=null; renderGroups(); renderChosen(); };
   });
 }
 
-/* 當日可預約（沿用 slots） */
+/* ========= 當日可預約（兩段式手風琴；一次只展開一個） ========= */
 async function renderGroups(){
   $groups.innerHTML='';
-  if(!state.date || state.doctors.size===0){ $groups.innerHTML='<div class="note">請先選擇醫師，並點選日期。</div>'; return; }
+  if(!state.date || state.doctors.size===0){
+    $groups.innerHTML='<div class="note">請先選擇醫師，並點選日期。</div>'; return;
+  }
   const res=await api('slots',{date:state.date, doctors:[...state.doctors]});
   if(!res.groups.length){ $groups.innerHTML='<div class="note">當日無可預約時段或已額滿。</div>'; return; }
-  res.groups.forEach(g=>{
+
+  // 產出每一個「總覽卡片」
+  res.groups.forEach((g,idx)=>{
     const key = g.label.includes('早')?'early':(g.label.includes('午')?'noon':'night');
-    const row=document.createElement('div'); row.className='slot';
-    row.innerHTML=`<strong style="font-size:1.05rem">${g.doctor}</strong>
-                   <span class="tag ${key}">${g.label}</span>
-                   <span>${g.range}</span>
-                   <span class="remain">剩 ${g.remain} 位</span>`;
+    const item=document.createElement('div'); item.className='acc-item'; item.dataset.index=idx;
+
+    const head=document.createElement('div'); head.className='acc-head';
+    head.innerHTML=`<span class="doc">${g.doctor}</span>
+                    <span class="tag ${key}">${g.label}</span>
+                    <span class="range">${g.range}</span>
+                    <span class="remain">剩 ${g.remain} 位</span>
+                    <span class="chev"></span>`;
+    item.appendChild(head);
+
+    const body=document.createElement('div'); body.className='acc-body';
     const caps=document.createElement('div'); caps.className='caps';
+
+    // 15 分鐘時段（預設收起，不建立選取樣式，按了才會高亮）
     g.capsules.forEach(c=>{
-      const btn=document.createElement('button'); btn.type='button'; btn.textContent=c.time;
-      btn.onclick=()=>{ caps.querySelectorAll('button').forEach(b=>b.removeAttribute('aria-pressed')); btn.setAttribute('aria-pressed','true');
-        state.chosen={doctor:g.doctor,date:state.date,label:g.label,range:g.range,time:c.time,no:c.no}; renderChosen(); };
+      const btn=document.createElement('button');
+      btn.type='button'; btn.textContent=c.time;
+      btn.onclick=()=>{
+        // 只有一個時段可選：清掉其它按鈕的 pressed
+        $groups.querySelectorAll('.caps button[aria-pressed="true"]').forEach(b=>b.removeAttribute('aria-pressed'));
+        btn.setAttribute('aria-pressed','true');
+        state.chosen={doctor:g.doctor,date:state.date,label:g.label,range:g.range,time:c.time,no:c.no};
+        renderChosen();
+      };
       caps.appendChild(btn);
     });
-    $groups.appendChild(row); $groups.appendChild(caps);
+    body.appendChild(caps);
+    item.appendChild(body);
+
+    // 點「總覽卡片」→ 收展；且只允許同時一個開啟
+    head.onclick=()=>{
+      // 若正要展開此卡，先把其它關閉
+      const opening = !item.classList.contains('open');
+      $groups.querySelectorAll('.acc-item.open').forEach(el=>el.classList.remove('open'));
+      if(opening) item.classList.add('open');
+    };
+
+    $groups.appendChild(item);
   });
 }
 
-/* 已選摘要 & 送出（不改） */
+/* 已選摘要 & 送出 */
 function renderChosen(){
   const box=$('#chosen'); const name=$('#name').value.trim();
   if(!state.chosen){ box.textContent='尚未選擇'; return; }
