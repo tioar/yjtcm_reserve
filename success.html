@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>預約成功｜永濟中醫診所</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#efe5da;--card:#fff;--line:#e0d4c7;--ink:#2a231b;--brand:#6b5844}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Serif TC","Source Han Serif TC",serif}
+.container{max-width:760px;margin:28px auto;padding:0 16px}
+.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px}
+h1{margin:0 0 12px;font-size:clamp(22px,4vw,30px);color:var(--brand)}
+.summary{line-height:1.9}
+.btn{display:inline-block;margin-top:14px;padding:.7rem 1.1rem;border-radius:10px;background:var(--brand);color:#fff;text-decoration:none}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="card">
+    <h1>預約成功</h1>
+    <div id="info" class="summary">讀取中…</div>
+    <a class="btn" href="index.html">回到首頁</a>
+  </div>
+</div>
+<script>
+(function(){
+  let data=null; try{ data=JSON.parse(sessionStorage.getItem('yj-success')||'null'); }catch(_){}
+  const el=document.getElementById('info');
+  if(!data){ el.innerHTML='找不到預約資訊，請回首頁。'; return; }
+  const w=['日','一','二','三','四','五','六'];
+  const [y,m,d]=data.date.split('-').map(Number);
+  const dt=new Date(y,m-1,d);
+  const lines=[
+    `日期：${y}/${String(m).padStart(2,'0')}/${String(d).padStart(2,'0')}（週${w[dt.getDay()]}）`,
+    `時間：${data.time}（${data.label}｜${data.range}）　醫師：${data.doctor}`,
+    `第幾號：第 ${data.no} 號`,
+    `姓名：${data.name}`
+  ];
+  el.innerHTML=lines.join('<br/>');
+})();
+</script>
+</body>
+</html>
