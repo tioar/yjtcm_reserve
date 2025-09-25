@@ -59,7 +59,6 @@ a,button{color:inherit;text-decoration:none;font-family:"Noto Serif TC","Source 
 .cal-wrap.loading #calLoading{display:flex}
 .loader{display:flex;gap:10px;align-items:center;border:1px solid var(--line);background:#fff;padding:10px 14px;border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.06)}
 .spin{width:20px;height:20px;border:3px solid #e8dccc;border-top-color:#5a4a3a;border-radius:50%;animation:sp .8s linear infinite}
-.spin.sm{width:16px;height:16px;border-width:2px}
 @keyframes sp{to{transform:rotate(360deg)}}
 
 /* ============ 當日可預約：兩段式（手風琴） ============ */
@@ -159,10 +158,10 @@ const $=s=>document.querySelector(s);
 const $docFilters=$('#docFilters'), $wd=$('#wdRow'), $days=$('#days'), $groups=$('#slotGroups'), $calWrap=$('#calWrap'), $calText=$('#calLoadText');
 
 const state={
-  doctor:'ALL',                  // 'ALL' | 某位醫師
+  doctor:'ALL',                 // 'ALL' | 某位醫師
   date:null, chosen:null,
   range:null, doctorsMaster:[],
-  dayCache:{}                    // 'YYYY-MM-DD|ALL' or 'YYYY-MM-DD|醫師'
+  dayCache:{}                   // 'YYYY-MM-DD|ALL' or 'YYYY-MM-DD|醫師'
 };
 const todayStr = ymd(new Date());
 let inFlightController=null;
@@ -187,19 +186,19 @@ async function api(action, params={}, signal){
 /* Boot */
 async function boot(){
   $wd.innerHTML=W.map(w=>`<div class="wd">${w}</div>`).join('');
-  drawCalendarShell();  // 只有日期
   const conf = await api('init');
   state.range = conf.range;
   state.doctorsMaster = conf.doctors||[];
   $('#rangeNote').textContent=`可預約日：${fmtROC(conf.range.start)} ～ ${fmtROC(conf.range.end)}`;
+  drawCalendarShell();                   // ← 拿到 range 後再畫殼，才能預先反灰
   renderDoctorChips();
-  await loadMonthDiagnoses();   // 預設 ALL
+  await loadMonthDiagnoses();            // 預設 ALL
 }
 
-/* 只畫日期殼 */
+/* 只畫日期殼（依 range/過去 先反灰） */
 function drawCalendarShell(){
   const base=new Date(); const first=firstOfMonth(base), last=endOfMonth(base), pad=first.getDay();
-  let html=''; for(let i=0;i<pad;i++) html+=`<div class="day"></div>`;
+  let html=''; for(let i=0;i<pad;i++) html+=`<div class="day off"></div>`;
   for(let d=1; d<=last.getDate(); d++){
     const key=ymd(new Date(first.getFullYear(),first.getMonth(),d));
     const isToday = key===todayStr;
@@ -262,6 +261,7 @@ async function loadMonthDiagnoses(){
     async function worker(){
       while(queue.length){
         const date=queue.shift();
+        // 視窗外直接記空物件（仍會畫灰底，但不點擊）
         if(state.range && (date<state.range.start || date>state.range.end)){
           results[date]={}; done++; $calText.textContent=`載入中… ${done}/${total}`; continue;
         }
@@ -272,8 +272,12 @@ async function loadMonthDiagnoses(){
           const res=await api('slots',{date,doctors:doctorsParam}, inFlightController.signal);
           const obj={};
           (res.groups||[]).forEach(g=>{
+            // cap 相關欄位，任一為 0 視同沒開診 → 不顯示
+            const cap = Number(g.cap ?? g.limit ?? g.capacity ?? g.quota ?? g.max ?? g.total ?? 0);
+            if(cap <= 0) return;
+            const remain = Math.max(0, Number(g.remain ?? cap));
             const k = g.label.includes('早')?'early':(g.label.includes('午')?'noon':'night');
-            obj[k]=Math.max(0, Number(g.remain||0)); // 0 也顯示（灰）
+            obj[k] = Math.max(obj[k]||0, remain); // 只需知道該診別有沒有 / 是否滿
           });
           state.dayCache[cacheKey]=obj;
           results[date]=obj;
@@ -300,14 +304,18 @@ function fillDiagnoses(map){
     const key=el.dataset.ymd, meta=el.querySelector('.meta'); if(!meta) return;
     meta.innerHTML='';
     const s = map[key] || {};
-    const isPast = key<todayStr;
-    const isInRange = !inRange || (key>=inRange.start && key<=inRange.end);
-    const hasAny = Object.keys(s).length>0;
-    if(!hasAny) return;
 
+    const isPast    = key < todayStr;
+    const isInRange = !inRange || (key>=inRange.start && key<=inRange.end);
+    const hasAny    = Object.keys(s).length > 0;
+
+    // 強制底色狀態：視窗外或已過去 → 反灰
+    el.classList.toggle('off', (isPast || !isInRange));
+
+    // 塞三種診別；即使過期/不在視窗，也顯示（但把方塊灰掉）
     [['early','早'],['noon','午'],['night','晚']].forEach(([k,shortC])=>{
       if(s[k]===undefined) return;
-      const off = (s[k]===0) || isPast || !isInRange;
+      const off = (s[k]===0) || isPast || !isInRange; // 0/過期/不在視窗都灰
       const lab = (k==='early'?'早診':k==='noon'?'午診':'晚診');
       const span=document.createElement('span');
       span.className='blk '+k+(off?' off':'');
@@ -316,8 +324,9 @@ function fillDiagnoses(map){
       meta.appendChild(span);
     });
 
+    // 可點條件：在視窗 & 非過去 & 有診別
     el.classList.remove('clickable');
-    if(!isPast && isInRange) el.classList.add('clickable');
+    if(!isPast && isInRange && hasAny) el.classList.add('clickable');
   });
 
   // 點日期 → 開手風琴列表
@@ -329,12 +338,12 @@ function fillDiagnoses(map){
 
 /* 當日手風琴「卡片式載入中」 */
 function showDaySkeleton(){
-  const sk = (i)=>`
+  const sk = () => `
     <div class="acc-item skel">
       <div class="acc-head">
         <span class="row w120"></span>
-        <span class="row w80"></span>
-        <span class="row w160"></span>
+        <span class="row w80" style="margin-left:8px"></span>
+        <span class="row w160" style="margin-left:8px"></span>
         <span class="grow"></span>
         <span class="row w80"></span>
       </div>
@@ -342,10 +351,10 @@ function showDaySkeleton(){
         <div class="caps">${Array.from({length:8}).map(()=>'<span></span>').join('')}</div>
       </div>
     </div>`;
-  $groups.innerHTML = sk(1)+sk(2);
+  $groups.innerHTML = sk()+sk();
 }
 
-/* ========= 當日可預約（兩段式手風琴；一次只展開一個；含去重） ========= */
+/* ========= 當日可預約（兩段式手風琴；一次只展開一個；含去重；cap=0 會被濾掉） ========= */
 async function renderGroups(){
   $groups.innerHTML='';
   if(!state.date){
@@ -363,15 +372,19 @@ async function renderGroups(){
     return;
   }
 
-  // === 去重＋合併：以「醫師｜診別｜範圍」為 key，capsules 也去重 ===
+  // === 去重＋合併：以「醫師｜診別｜範圍」為 key，capsules 也去重；cap<=0 直接略過 ===
   const uniq = new Map();
   (res.groups||[]).forEach(g=>{
+    const cap = Number(g.cap ?? g.limit ?? g.capacity ?? g.quota ?? g.max ?? g.total ?? 0);
+    if(cap <= 0) return;   // ← 沒開診不要做成卡片
+
     const doctor=String(g.doctor||'').trim();
     const label =String(g.label||'').trim();
     const range =String(g.range||'').trim();
     const key = `${doctor}|${label}|${range}`;
+
     if(!uniq.has(key)){
-      uniq.set(key,{doctor,label,range,remain:Number(g.remain||0),capsules:[],_set:new Set()});
+      uniq.set(key,{doctor,label,range,remain:Number(g.remain||0),capsules:[],_set:new Set(),cap});
     }else{
       const t=uniq.get(key);
       t.remain=Math.max(t.remain, Number(g.remain||0));
