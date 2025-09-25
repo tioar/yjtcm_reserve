@@ -12,8 +12,10 @@
   --early:#4f7f65; --noon:#b77a2a; --night:#3f6674;
   --brand:#6b5844; --brand-600:#5a4a3a;
   --slot-bd:#cbb7a2;
-  --sel-bg:#d9b99a; --sel-bd:#b88f6a;  /* 日期高亮（灰橘） */
+  --sel-bg:#d9b99a; --sel-bd:#b88f6a;            /* 日期高亮（灰橘） */
+  --today-bg:#e9dfd3; --today-bd:#d3c5b6;        /* 今天用較淺咖啡色 */
   --disabled-bg:#ececec; --disabled-ink:#9aa0aa;
+  --chip:#efeadf; --chip-ink:#5a4a3a;            /* 今天日期小標籤色 */
 }
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Serif TC","Source Han Serif TC",serif}
@@ -36,13 +38,23 @@ a,button{color:inherit;text-decoration:none;font-family:"Noto Serif TC","Source 
 
 /* 醫師選擇（單選） */
 .filters{display:flex;gap:10px;flex-wrap:wrap}
-.filter{border:1px solid var(--line);border-radius:10px;background:#fff;padding:.55rem 1rem;font-weight:800;cursor:pointer}
+.filter{
+  border:1px solid var(--line);border-radius:10px;background:#fff;
+  padding:.62rem 1.1rem;font-weight:900;cursor:pointer;
+  font-size:1.15rem;               /* ← 字體加大 */
+  letter-spacing:.5px;
+}
 .filter[aria-pressed="true"]{background:#efe0cf;border-color:#d6c3ae;color:var(--brand)}
 
-/* 月曆 */
-.cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+/* 月曆頭 */
+.cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:10px}
+.cal-left{display:flex;align-items:baseline;gap:12px}
 .cal-title{font-weight:900;color:var(--brand);font-size:clamp(18px,3.4vw,24px)}
-.nav{display:flex;gap:8px}
+.today-chip{
+  background:var(--chip); color:var(--chip-ink); border:1px solid #dccfbf;
+  padding:.28rem .6rem; border-radius:999px; font-weight:900; font-size:.95rem; white-space:nowrap;
+}
+.cal-right{display:flex;align-items:center;gap:8px}
 .nav .arrow{width:36px;height:36px;border:1px solid var(--line);border-radius:10px;background:#fff;display:grid;place-items:center;cursor:pointer}
 .nav .arrow:disabled{opacity:.4;cursor:not-allowed}
 .nav .arrow.prev::before,
@@ -52,6 +64,7 @@ a,button{color:inherit;text-decoration:none;font-family:"Noto Serif TC","Source 
 .nav .arrow.prev::before{transform:rotate(135deg)}
 .nav .arrow.next::before{transform:rotate(-45deg)}
 
+/* 月曆 */
 .cal-wrap{position:relative}
 .grid7{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px}
 .wd{color:#8b8379;text-align:center;font-weight:800;font-size:.88rem}
@@ -61,7 +74,7 @@ a,button{color:inherit;text-decoration:none;font-family:"Noto Serif TC","Source 
   display:flex;flex-direction:column;align-items:center;gap:8px;padding:8px;transition:background .15s ease,border-color .15s ease,box-shadow .15s ease;overflow:hidden
 }
 .day.clickable{cursor:pointer}
-.day.today{background:#3a3128;color:#fff;border-color:#3a3128}
+.day.today{background:var(--today-bg);color:#3a3128;border-color:var(--today-bd)}
 .day.off{background:#f3ede6;color:#9a948b}
 .day.selected{background:var(--sel-bg); border-color:var(--sel-bd); box-shadow:0 0 0 2px var(--sel-bd)}
 .day .d{font-weight:900;font-size:1.05rem}
@@ -130,10 +143,15 @@ a,button{color:inherit;text-decoration:none;font-family:"Noto Serif TC","Source 
 
   <div class="section cal-wrap" id="calWrap">
     <div class="cal-head">
-      <div class="cal-title" id="calTitle">—</div>
-      <div class="nav">
-        <button id="btnPrev" class="arrow prev" title="上個月"></button>
-        <button id="btnNext" class="arrow next" title="下個月"></button>
+      <div class="cal-left">
+        <div class="cal-title" id="calTitle">—</div>
+        <span id="todayChip" class="today-chip"></span>
+      </div>
+      <div class="cal-right">
+        <div class="nav">
+          <button id="btnPrev" class="arrow prev" title="上個月"></button>
+          <button id="btnNext" class="arrow next" title="下個月"></button>
+        </div>
       </div>
     </div>
 
@@ -183,29 +201,27 @@ a,button{color:inherit;text-decoration:none;font-family:"Noto Serif TC","Source 
 </div>
 
 <script>
-const SCRIPT_URL='https://script.google.com/macros/s/AKfycbyuXAhgPHX8QMSxZOJJgaj7LfryBRpw2npawiGmjgYsAlNDK4-uESEXpqak-o6mlZfP/exec'; // ← 換成你的 GAS 網址
+/* ===== 將此換成你的 GAS 網址 ===== */
+const SCRIPT_URL='https://script.google.com/macros/s/AKfycbyuXAhgPHX8QMSxZOJJgaj7LfryBRpw2npawiGmjgYsAlNDK4-uESEXpqak-o6mlZfP/exec';
+
+/* ===== 小工具 ===== */
 const W=['日','一','二','三','四','五','六'];
 const $=s=>document.querySelector(s);
-const $wd=$('#wdRow'), $days=$('#days'), $groups=$('#slotGroups'), $calWrap=$('#calWrap'), $calText=$('#calLoadText');
-const $title=$('#calTitle'), $prev=$('#btnPrev'), $next=$('#btnNext');
-const todayStr = ymd(new Date());
-const state={
-  doctors:new Set(),           // 當前選擇的醫師集合
-  doctorsMaster:[],            // 從後端抓到的所有醫師
-  range:null,                  // 可預約窗（D+3 ~ D+14）
-  date:null,                   // 使用者選到的日期（YYYY-MM-DD）
-  chosen:null,                 // {doctor,date,label,range,time,no}
-  curMonth:firstOfMonth(new Date()),
-  monthSummary:{}              // api('summary') 的結果 days{date:{early/noon/night:remain}}
-};
-let inFlight=false;
+const $wd=$('#wdRow'), $days=$('#days'), $groups=$('#slotGroups'),
+      $calWrap=$('#calWrap'), $calText=$('#calLoadText'),
+      $title=$('#calTitle'), $prev=$('#btnPrev'), $next=$('#btnNext'),
+      $todayChip=$('#todayChip');
 
-/* Utils */
+const today = new Date();
+const todayStr = ymd(today);
+
 function pad2(n){return String(n).padStart(2,'0')}
-function ymd(d){return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`}
+function ymd(d){return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}` }
 function firstOfMonth(d){return new Date(d.getFullYear(),d.getMonth(),1)}
 function endOfMonth(d){return new Date(d.getFullYear(),d.getMonth()+1,0)}
 function fmtROC(dateStr){const [y,m,d]=dateStr.split('-').map(Number);const dt=new Date(y,m-1,d);return `${y}/${pad2(m)}/${pad2(d)}（${'日一二三四五六'[dt.getDay()]}）`}
+function fmtTodayChip(d){return `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日（${'日一二三四五六'[d.getDay()]}）`}
+
 function calLoading(on,msg){ $calWrap.classList.toggle('loading',!!on); if(msg) $calText.textContent=msg; }
 
 /* 切 15 分鐘 */
@@ -215,7 +231,7 @@ function* timeSlices(start,end,stepMin=15){
   while(t<E){ const h=pad2(Math.floor(t/60)), m=pad2(t%60); yield `${h}:${m}`; t+=stepMin; }
 }
 
-/* API */
+/* ===== API ===== */
 async function api(action, params={}){
   const url=new URL(SCRIPT_URL);
   Object.entries({action,...params}).forEach(([k,v])=>url.searchParams.set(k,Array.isArray(v)?v.join(','):v));
@@ -224,10 +240,25 @@ async function api(action, params={}){
   return r.json();
 }
 
-/* Boot */
+/* ===== 狀態 ===== */
+const state={
+  doctors:new Set(),           // 當前選擇的醫師集合
+  doctorsMaster:[],            // 從後端抓到的所有醫師
+  range:null,                  // 可預約窗（D+3 ~ D+14）
+  date:null,                   // 使用者選到的日期（YYYY-MM-DD）
+  chosen:null,                 // {doctor,date,label,range,time,no}
+  curMonth:firstOfMonth(new Date()),
+  monthSummary:{}              // summary(days) 結果
+};
+let inFlight=false;
+
+/* ===== 開機 ===== */
 async function boot(){
   // 週標籤
   $wd.innerHTML=W.map(w=>`<div class="wd">${w}</div>`).join('');
+  // 今日標籤
+  $todayChip.textContent = fmtTodayChip(today);
+
   // 初次畫空殼
   drawCalendarShell();
 
@@ -237,15 +268,15 @@ async function boot(){
 
   $('#rangeNote').textContent=`可預約日：${fmtROC(conf.range.start)} ～ ${fmtROC(conf.range.end)}`;
 
-  renderDoctorChips();     // 預設「皆可」
-  await loadMonthSummary();  // 先拿整月摘要（含 0 也回來）
-  fillDiagnoses();           // 把診別塞進日格
+  renderDoctorChips();        // 預設「皆可」
+  await loadMonthSummary();   // 整月摘要
+  fillDiagnoses();            // 塞診別
 }
 
-/* 醫師 chips：順序＝游志聰 → 江玉梅 → 皆可；單選；預設「皆可」 */
+/* ===== 醫師 chips：游志聰 → 江玉梅 → 皆可（單選；預設皆可） ===== */
 function renderDoctorChips(){
   const order = ['游志聰醫師','江玉梅醫師'];
-  const masters = [...order.filter(n=>state.doctorsMaster.includes(n))]; // 按需求排序
+  const masters = [...order.filter(n=>state.doctorsMaster.includes(n))]; // 排序
   const box=$('#docFilters'); box.innerHTML='';
 
   // 預設皆可：全選
@@ -263,7 +294,7 @@ function renderDoctorChips(){
     box.appendChild(b);
   });
 
-  // 皆可（在最後）
+  // 皆可（最後）
   const all=document.createElement('button'); all.type='button'; all.className='filter'; all.textContent='皆可';
   const isAll = state.doctors.size===state.doctorsMaster.length && state.doctorsMaster.length>0;
   if(isAll) all.setAttribute('aria-pressed','true');
@@ -275,7 +306,7 @@ function renderDoctorChips(){
   box.appendChild(all);
 }
 
-/* 畫月曆殼、處理「本月/下月」箭頭 */
+/* ===== 月曆殼、月份切換 ===== */
 function drawCalendarShell(){
   const first=firstOfMonth(state.curMonth), last=endOfMonth(state.curMonth), pad=first.getDay();
   $title.textContent=`${first.getFullYear()}年${first.getMonth()+1}月份`;
@@ -298,7 +329,7 @@ function drawCalendarShell(){
   $days.innerHTML=html;
 }
 
-/* 整月摘要（含 0）— 用後端 summary，避免早/午/晚為 0 就不回傳的問題 */
+/* 整月摘要（含 0） */
 async function loadMonthSummary(){
   if(inFlight) return; inFlight=true; calLoading(true,'載入中…');
   try{
@@ -320,20 +351,19 @@ function fillDiagnoses(){
     if(key < todayStr) return;
 
     const s = state.monthSummary[key] || {};
-    const hasAny = Object.keys(s).length>0;
-    if(!hasAny) return;
+    if(Object.keys(s).length===0) return;
 
     [['early','早'],['noon','午'],['night','晚']].forEach(([k,shortC])=>{
       if(s[k]===undefined) return;
       const lab=(k==='early'?'早診':k==='noon'?'午診':'晚診');
       const span=document.createElement('span');
-      span.className='blk '+k+(s[k]<=0?' off':''); // 0 也顯示，但抑制
+      span.className='blk '+k+(s[k]<=0?' off':''); // 0 顯示但灰掉
       span.dataset.s=shortC;
       span.innerHTML=`<span class="txt">${lab}</span>`;
       meta.appendChild(span);
     });
 
-    // 是否可點：在可預約窗內才可點
+    // 可點與否：在可預約窗內才可點
     const clickable = inRange && key>=inRange.start && key<=inRange.end;
     el.classList.toggle('clickable', clickable);
   });
@@ -370,18 +400,17 @@ async function renderGroups(){
     const body=document.createElement('div'); body.className='acc-body';
     const caps=document.createElement('div'); caps.className='caps';
 
-    // 生成「完整」時段列表：range 切 15 分鐘；有在 g.capsules 的才可選，其餘灰掉
+    // range 切 15 分鐘；有在 capsules 的才可選，其餘灰掉
     const ava = new Set((g.capsules||[]).map(c=>c.time));
     const [start,end] = g.range.replace(/\s+/g,'').split('～');
     for(const t of timeSlices(start,end,15)){
       const btn=document.createElement('button'); btn.type='button'; btn.textContent=t;
       btn.className = `slot ${key}`;
       const isAvail = ava.has(t);
-      if(!isAvail){ btn.classList.add('disabled'); }  // 不可選灰底
+      if(!isAvail){ btn.classList.add('disabled'); }
       else{
         btn.onclick=()=>{ $groups.querySelectorAll('.slot[aria-pressed="true"]').forEach(b=>b.removeAttribute('aria-pressed'));
           btn.setAttribute('aria-pressed','true');
-          // 取對應號碼（有傳回才帶；沒傳回就省略號碼）
           const obj = (g.capsules||[]).find(c=>c.time===t) || {};
           state.chosen={doctor:g.doctor,date:state.date,label:g.label,range:g.range,time:t,no:obj.no};
           renderChosen();
@@ -403,6 +432,24 @@ function renderChosen(){
   box.textContent = `${fmtROC(state.chosen.date)}　時間：${state.chosen.time}（${state.chosen.label}｜${state.chosen.range}）　${state.chosen.doctor}`;
 }
 
+/* ===== 表單檢核（台灣身分證 & 生日合理性） ===== */
+const idMap={A:10,B:11,C:12,D:13,E:14,F:15,G:16,H:17,I:34,J:18,K:19,L:20,M:21,N:22,O:35,P:23,Q:24,R:25,S:26,T:27,U:28,V:29,W:32,X:30,Y:31,Z:33};
+function validateTWID(id){
+  id=id.toUpperCase();
+  if(!/^[A-Z][12]\d{8}$/.test(id)) return false;
+  const n=idMap[id[0]], X=Math.floor(n/10), Y=n%10;
+  const w=[8,7,6,5,4,3,2,1,1];
+  let sum=X*1 + Y*9;
+  for(let i=1;i<=9;i++) sum += Number(id[i]) * w[i-1];
+  return sum%10===0;
+}
+/* 輸入英文自動大寫；第二碼只能 1/2 */
+$('#idnum').addEventListener('input', e=>{
+  let v=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,10);
+  if(v.length>=2) v=v[0]+v[1].replace(/[^12]/g,'');
+  e.target.value=v;
+});
+
 /* 送出 / 查詢 */
 $('#submit').onclick=async ()=>{
   const req={
@@ -414,13 +461,23 @@ $('#submit').onclick=async ()=>{
     chosen:state.chosen
   };
   if(!(req.name && req.birthday && req.idnum && req.phone && req.agree && req.chosen)){ alert('資料或選擇未完成'); return; }
+
+  /* 生日合理性：不得超過 150 歲；不得是未來日期 */
+  const bd=new Date(req.birthday), now=new Date();
+  const age=Math.floor((now - bd)/31557600000); // 365.25天
+  if(!(bd instanceof Date) || isNaN(bd)) { alert('請輸入有效的出生年月日'); return; }
+  if(age>150 || bd>now){ alert('出生年月日不合理'); return; }
+
+  /* 身分證檢核 */
+  if(!validateTWID(req.idnum)){ alert('身分證字號格式錯誤'); return; }
+
   const url=new URL(SCRIPT_URL); url.searchParams.set('action','reserve');
   const r=await fetch(url.toString(),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(req)});
   const data=await r.json();
   if(data.ok){ alert(`預約成功！\n您的號碼：第 ${data.no} 號`); } else { alert(`預約失敗：${data.msg||'未知錯誤'}`); }
   await loadMonthSummary(); fillDiagnoses(); renderGroups();
 };
-$('#btnQuery').onclick=()=>{ alert('查詢/取消預約頁面稍後補上（保留按鈕與樣式）。'); };
+$('#btnQuery').onclick=()=>{ alert('查詢/取消預約頁面稍後補上。'); };
 
 /* 月份切換（只允許本月與下月） */
 $('#btnPrev').addEventListener('click', async()=>{
