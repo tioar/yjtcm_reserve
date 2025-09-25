@@ -12,7 +12,7 @@
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif}
-.container{max-width:1080px;margin:18px auto;padding:0 14px}
+.container{max-width:980px;margin:18px auto;padding:0 14px}
 .h1{display:flex;align-items:center;gap:10px;font-weight:900;font-size:clamp(22px,4.2vw,32px)}
 .badge{background:var(--brand);color:#fff;border-radius:50%;width:42px;height:42px;display:grid;place-items:center;font-weight:900}
 .section{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin-top:14px}
@@ -21,24 +21,31 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans TC","
 
 /* doctor chips */
 .filters{display:flex;gap:8px;flex-wrap:wrap}
-.chip{border:1px solid #d9e6f3;border-radius:999px;background:#fff;padding:.48rem .95rem;font-weight:800;cursor:pointer}
+.chip{border:1px solid #d9e6f3;border-radius:999px;background:#fff;padding:.42rem .9rem;font-weight:800;cursor:pointer}
 .chip[aria-pressed="true"]{background:#e7f1fb;border-color:#cfe4fb;color:#14508a}
 
-/* calendar */
-.grid7{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
-.wd{color:var(--muted);text-align:center;font-weight:800}
-.day{min-height:84px;background:#fff;border:1px solid #e6e8f0;border-radius:12px;display:flex;flex-direction:column;gap:6px;padding:8px}
-.day .d{font-weight:900}
+/* calendar (narrow) */
+.grid7{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.wd{color:#8b96a6;text-align:center;font-weight:800;font-size:.82rem}
+.day{
+  min-height:74px;font-size:.78rem;background:#fff;border:1px solid #e6e8f0;border-radius:8px;
+  display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:4px;padding:6px;
+}
 .day.clickable{cursor:pointer}
 .day.clickable:hover{box-shadow:0 0 0 2px #cfe2ff}
 .day.today{background:#2e3440;color:#fff;border-color:#2e3440}
-.day.today .d{color:#fff}
+.day .d{font-weight:900;font-size:.9rem}
+.pill{display:inline-block;border-radius:6px;padding:0 6px;font-size:.7rem;font-weight:800;line-height:18px}
+.pill.early{background:#e7f7ee;color:#085e42}
+.pill.noon {background:#fff3df;color:#7a4d00}
+.pill.night{background:#e8f2ff;color:#1d4ed8}
+.pill.dim{opacity:.35}
 
-/* slot groups */
+/* slot groups (detail) */
 .slot{border:1px solid #e0e4ef;border-radius:12px;padding:12px;background:#fff;display:flex;gap:10px;align-items:center}
 .slot .remain{margin-left:auto;color:#475569}
 .caps{margin:8px 0 14px 0;display:flex;flex-wrap:wrap;gap:8px}
-.caps button{border:1px solid #d7dcea;background:#fff;border-radius:999px;padding:.5rem .8rem;font-weight:800;cursor:pointer}
+.caps button{border:1px solid #d7dcea;background:#fff;border-radius:999px;padding:.48rem .8rem;font-weight:800;cursor:pointer}
 .caps button[aria-pressed="true"]{background:#e8f1ff;border-color:#bdd6ff}
 
 /* form */
@@ -86,81 +93,89 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans TC","
       <input id="phone" class="input" maxlength="10" inputmode="numeric" placeholder="聯絡電話 *"/>
       <label><input type="checkbox" id="agree"/> 我已閱讀並同意預約須知</label>
       <button class="btn btn-main" id="submit">送出預約</button>
-      <button class="btn btn-ghost" id="btnQuery">查詢/取消（稍後提供）</button>
+      <button class="btn btn-ghost" id="btnQuery" type="button">查詢/取消（稍後提供）</button>
     </div>
   </div>
 </div>
 
 <script>
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyXNLheSRkFQDeundr5h6gWO5zLFvhHFaLUMbYwP_aStvz1254jJVx8gzd4Sg5kFHI/exec'; // ← 換成你的 GAS 網址
-const W = ['日','一','二','三','四','五','六'];
-const $ = s=>document.querySelector(s);
+const SCRIPT_URL='YOUR_SCRIPT_URL'; // ← 換成 GAS 網址
+const W=['日','一','二','三','四','五','六'];
+const LABELS={early:'早診', noon:'午診', night:'晚診'};
+const $=s=>document.querySelector(s);
 const $docFilters=$('#docFilters'), $wd=$('#wdRow'), $days=$('#days'), $groups=$('#slotGroups');
 const state={doctors:new Set(), date:null, chosen:null, range:null, doctorsMaster:[]};
+
 function pad2(n){return String(n).padStart(2,'0')}
 function ymd(d){return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`}
 function firstOfMonth(d){return new Date(d.getFullYear(),d.getMonth(),1)}
 function endOfMonth(d){return new Date(d.getFullYear(),d.getMonth()+1,0)}
-function fmtROC(dateStr){const [y,m,d]=dateStr.split('-').map(Number); const dt=new Date(y,m-1,d);return `${y}/${pad2(m)}/${pad2(d)}（週${W[dt.getDay()]}）`}
+function fmtROC(dateStr){const [y,m,d]=dateStr.split('-').map(Number);const dt=new Date(y,m-1,d);return `${y}/${pad2(m)}/${pad2(d)}（週${W[dt.getDay()]}）`}
 
 async function api(path, params={}){
-  const url = new URL(SCRIPT_URL);
-  Object.entries({action:path,...params}).forEach(([k,v])=>url.searchParams.set(k, Array.isArray(v)?v.join(','):v));
-  const r = await fetch(url.toString()); if(!r.ok) throw new Error('network'); return r.json();
+  const url=new URL(SCRIPT_URL);
+  Object.entries({action:path,...params}).forEach(([k,v])=>url.searchParams.set(k,Array.isArray(v)?v.join(','):v));
+  const r=await fetch(url.toString()); if(!r.ok) throw new Error('network'); return r.json();
 }
 
-// boot: 取醫師名單與可預約區間
 async function boot(){
-  const conf = await api('init');
-  state.range = conf.range; // {start:'YYYY-MM-DD', end:'YYYY-MM-DD'}
-  state.doctorsMaster = conf.doctors; // ['陳醫師','蔡醫師',...]
-  $('#rangeNote').textContent = `可預約日：${fmtROC(conf.range.start)} ～ ${fmtROC(conf.range.end)}`;
+  const conf=await api('init');
+  state.range=conf.range; state.doctorsMaster=conf.doctors||[];
+  $('#rangeNote').textContent=`可預約日：${fmtROC(conf.range.start)} ～ ${fmtROC(conf.range.end)}`;
   renderDoctorChips();
-  $wd.innerHTML = W.map(w=>`<div class="wd">${w}</div>`).join('');
-  renderCalendar();
-  renderGroups();
+  $wd.innerHTML=W.map(w=>`<div class="wd">${w}</div>`).join('');
+  renderCalendar(); renderGroups();
 }
+
 function renderDoctorChips(){
   $docFilters.innerHTML='';
   state.doctorsMaster.forEach(name=>{
     const b=document.createElement('button'); b.type='button'; b.className='chip'; b.textContent=name;
     if(state.doctors.has(name)) b.setAttribute('aria-pressed','true');
-    b.onclick=()=>{ state.date=null; state.chosen=null; (state.doctors.has(name)?state.doctors.delete(name):state.doctors.add(name)); renderDoctorChips(); renderCalendar(); renderGroups(); renderChosen(); };
+    b.onclick=()=>{ (state.doctors.has(name)?state.doctors.delete(name):state.doctors.add(name)); state.date=null; state.chosen=null; renderDoctorChips(); renderCalendar(); renderGroups(); renderChosen(); };
     $docFilters.appendChild(b);
   });
 }
+
 function renderCalendar(){
   const m=new Date(); const first=firstOfMonth(m), last=endOfMonth(m); const pad=first.getDay();
   let html=''; for(let i=0;i<pad;i++) html+=`<div></div>`;
   for(let d=1; d<=last.getDate(); d++){
     const cur=new Date(first.getFullYear(),first.getMonth(),d); const key=ymd(cur);
     const inRange = state.range && key>=state.range.start && key<=state.range.end;
-    const cls='day'+(inRange?' clickable':'')+(key===ymd(new Date())?' today':'');
-    html+=`<div class="${cls}" data-ymd="${key}"><div class="d">${d}</div><div class="meta">${inRange?'可預約':''}</div></div>`;
+    const cls = 'day'+(inRange?' clickable':'')+(key===ymd(new Date())?' today':'');
+    const pills = ['early','noon','night'].map(k=>`<span class="pill ${k}${inRange?'':' dim'}">${LABELS[k]}</span>`).join('<br>');
+    html+=`<div class="${cls}" data-ymd="${key}">
+      <div class="d">${d}</div>
+      <div class="meta" style="text-align:center">${pills}</div>
+    </div>`;
   }
   $days.innerHTML=html;
   $days.querySelectorAll('.day.clickable').forEach(el=>{
-    el.onclick=()=>{ $days.querySelectorAll('.day').forEach(x=>x.style.outline='none'); el.style.outline='2px solid #b9dafb'; state.date=el.dataset.ymd; state.chosen=null; renderGroups(); renderChosen(); };
+    el.onclick=()=>{ $days.querySelectorAll('.day').forEach(x=>x.style.outline='none'); el.style.outline='2px solid #b9dafb';
+      state.date=el.dataset.ymd; state.chosen=null; renderGroups(); renderChosen(); };
   });
 }
+
 async function renderGroups(){
   $groups.innerHTML='';
-  if(!state.date || state.doctors.size===0){ $groups.innerHTML='<div class="note">請先勾選醫師，並點選可預約日期。</div>'; return; }
-  const res = await api('slots', {date:state.date, doctors:[...state.doctors]});
-  if(res.groups.length===0){ $groups.innerHTML='<div class="note">當日無可預約時段。</div>'; return; }
+  if(!state.date || state.doctors.size===0){ $groups.innerHTML='<div class="note">請先勾選醫師，並點選日期。</div>'; return; }
+  const res=await api('slots',{date:state.date, doctors:[...state.doctors]});
+  if(!res.groups.length){ $groups.innerHTML='<div class="note">當日無可預約時段。</div>'; return; }
   res.groups.forEach(g=>{
     const row=document.createElement('div'); row.className='slot';
     row.innerHTML=`<strong>${g.doctor}</strong> ${g.label} ${g.range} <span class="remain">剩 ${g.remain} 位</span>`;
     const caps=document.createElement('div'); caps.className='caps';
     g.capsules.forEach(c=>{
-      const btn=document.createElement('button'); btn.type='button';
-      btn.textContent=c.time;
-      btn.onclick=()=>{ caps.querySelectorAll('button').forEach(b=>b.removeAttribute('aria-pressed')); btn.setAttribute('aria-pressed','true'); state.chosen={doctor:g.doctor,date:state.date,label:g.label,range:g.range,time:c.time,no:c.no}; renderChosen(); };
+      const btn=document.createElement('button'); btn.type='button'; btn.textContent=c.time;
+      btn.onclick=()=>{ caps.querySelectorAll('button').forEach(b=>b.removeAttribute('aria-pressed')); btn.setAttribute('aria-pressed','true');
+        state.chosen={doctor:g.doctor,date:state.date,label:g.label,range:g.range,time:c.time,no:c.no}; renderChosen(); };
       caps.appendChild(btn);
     });
     $groups.appendChild(row); $groups.appendChild(caps);
   });
 }
+
 function renderChosen(){
   const box=$('#chosen'); const name=$('#name').value.trim();
   if(!state.chosen){ box.textContent='尚未選擇'; return; }
@@ -169,7 +184,7 @@ function renderChosen(){
     {t:'時間',v:`${state.chosen.time}（${state.chosen.label}｜${state.chosen.range}）`},
     {t:'第幾號',v:`第 ${state.chosen.no} 號`},
     {t:'醫師',v:state.chosen.doctor},
-    {t:'姓名',v:name||'（尚未填寫）'},
+    {t:'姓名',v:name||'（尚未填寫）'}
   ];
   box.innerHTML=''; items.forEach(it=>{ const s=document.createElement('span'); s.className='tag'; s.textContent=`${it.t}：${it.v}`; box.appendChild(s); });
 }
@@ -185,13 +200,10 @@ $('#submit').onclick=async ()=>{
     chosen:state.chosen
   };
   if(!(req.name && req.birthday && req.idnum && req.phone && req.agree && req.chosen)){ alert('資料或選擇未完成'); return; }
-  const url = new URL(SCRIPT_URL);
-  url.searchParams.set('action','reserve');
-  const r = await fetch(url.toString(), {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(req)});
-  const data = await r.json();
-  if(data.ok){ alert(`預約成功！\n您的號碼：第 ${data.no} 號`); }
-  else{ alert(`預約失敗：${data.msg||'未知錯誤'}`); }
-  // 重新刷新當日可用
+  const url=new URL(SCRIPT_URL); url.searchParams.set('action','reserve');
+  const r=await fetch(url.toString(),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(req)});
+  const data=await r.json();
+  if(data.ok){ alert(`預約成功！\n您的號碼：第 ${data.no} 號`); } else { alert(`預約失敗：${data.msg||'未知錯誤'}`); }
   if(state.date && state.doctors.size) renderGroups();
 };
 
