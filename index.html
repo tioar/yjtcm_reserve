@@ -12,9 +12,9 @@
   --early:#4f7f65; --noon:#b77a2a; --night:#3f6674;
   --brand:#6b5844; --brand-600:#5a4a3a;
   --slot-bd:#cbb7a2;
-  --sel-bg:#d9b99a; --sel-bd:#b88f6a;          /* 可選日期的選取（灰橘） */
-  --today:#a8927a;                              /* 今天（加深一點點） */
-  --disabled-bg:#ececec; --disabled-ink:#8f949d;/* 不可預約的灰底 */
+  --sel-bg:#d9b99a; --sel-bd:#b88f6a;              /* 可選日期的選取（灰橘） */
+  --today:#a8927a;                                  /* 今天（加深一點點） */
+  --disabled-bg:#ececec; --disabled-ink:#8f949d;    /* 不可預約的灰底 */
 }
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Serif TC","Source Han Serif TC",serif}
@@ -32,19 +32,11 @@ a,button{color:inherit;text-decoration:none;font-family:"Noto Serif TC","Source 
 .tt{font-weight:900;margin:6px 2px 10px;color:var(--brand)}
 .note{color:var(--muted);font-size:.92rem}
 
-/* 醫師選擇（單選，字稍小） */
-.filters{display:flex;gap:10px;flex-wrap:wrap}
-.filter{
-  border:1px solid var(--line);border-radius:12px;background:#fff;padding:.60rem .95rem;
-  font-weight:900;cursor:pointer;font-size:.98rem;
-}
-.filter[aria-pressed="true"]{background:#efe0cf;border-color:#d6c3ae;color:var(--brand)}
-
 /* 月曆抬頭（含今日 + 箭頭） */
 .cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:12px}
 .cal-left{display:flex;align-items:center;gap:12px}
 .cal-title{font-weight:900;color:var(--brand);font-size:clamp(18px,3.4vw,24px)}
-.today-text{color:#a47b55;font-weight:800} /* 純文字、淺棕色 */
+.today-text{color:#a47b55;font-weight:800} /* 淺棕色純文字 */
 .nav{display:flex;gap:8px;margin-left:auto}
 .nav .arrow{width:36px;height:36px;border:1px solid var(--line);border-radius:10px;background:#fff;display:grid;place-items:center;cursor:pointer}
 .nav .arrow:disabled{opacity:.4;cursor:not-allowed}
@@ -66,7 +58,7 @@ a,button{color:inherit;text-decoration:none;font-family:"Noto Serif TC","Source 
   transition:background .15s,border-color .15s,box-shadow .15s;overflow:hidden
 }
 .day.clickable{cursor:pointer}
-.day.off{background:#f3ede6;color:#9a948b}                         /* 已過去 */
+.day.off{background:#f3ede6;color:#9a948b}                         /* 已過去（本月前段） */
 .day.today{background:var(--today);color:#fff;border-color:var(--today)} /* 今天（明顯一點） */
 .day.disabled{background:var(--disabled-bg);color:var(--disabled-ink)}   /* 不在預約窗內（含今天/未來） */
 .day.today.disabled{background:#d3cdc6;color:#5b5b5b;border-color:#c5bdb5} /* 今天但不可預約 → 灰且帶今天感 */
@@ -74,6 +66,7 @@ a,button{color:inherit;text-decoration:none;font-family:"Noto Serif TC","Source 
 .day .d{font-weight:900;font-size:1rem}
 .meta{text-align:center;min-height:58px;display:flex;flex-direction:column;gap:4px;align-items:center;justify-content:flex-start}
 .day.disabled .blk{filter:grayscale(100%);opacity:.55}              /* 不可預約：診別方塊亦灰化 */
+.expired{color:#9a948b;background:#eee;border:1px solid #e0d4c7;border-radius:999px;padding:2px 8px;font-size:.78rem;font-weight:900}
 
 /* 月曆內診別方塊 */
 .blk{display:inline-block;border-radius:8px;padding:3px 9px;font-size:.78rem;font-weight:900;color:#fff;line-height:1}
@@ -127,6 +120,7 @@ a,button{color:inherit;text-decoration:none;font-family:"Noto Serif TC","Source 
 
 /* 底部按鈕上下排列 */
 .btn-stack{display:grid;gap:10px}
+.filter{border:1px solid var(--line);border-radius:12px;background:#fff;padding:.60rem .95rem;font-weight:900;cursor:pointer;font-size:1.02rem}
 .btn-solid{background:var(--brand);color:#fff;border-color:var(--brand)}
 .btn-ghost{background:#fff;color:var(--brand);border-color:var(--brand)}
 
@@ -142,11 +136,6 @@ a,button{color:inherit;text-decoration:none;font-family:"Noto Serif TC","Source 
 <body>
 <div class="container">
   <div class="h1"><div class="badge">＋</div> 永濟中醫診所｜線上預約</div>
-
-  <div class="section">
-    <div class="tt">請先選擇醫師</div>
-    <div class="filters" id="docFilters"></div>
-  </div>
 
   <div class="section cal-wrap" id="calWrap">
     <div class="cal-head">
@@ -207,15 +196,14 @@ a,button{color:inherit;text-decoration:none;font-family:"Noto Serif TC","Source 
 </div>
 
 <script>
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyuXAhgPHX8QMSxZOJJgaj7LfryBRpw2npawiGmjgYsAlNDK4-uESEXpqak-o6mlZfP/exec'; // ← 你的 GAS URL（GET 模式）
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyuXAhgPHX8QMSxZOJJgaj7LfryBRpw2npawiGmjgYsAlNDK4-uESEXpqak-o6mlZfP/exec'; // ← 改成你的 GAS 網址（GET 模式）
 
 const W=['日','一','二','三','四','五','六'];
 const $=s=>document.querySelector(s);
-const $wd=$('#wdRow'), $days=$('#days'), $groups=$('#slotGroups'), $calWrap=$('#calWrap'), $calText=$('#calLoadText');
+const $wd=$('#wdRow'), $days=$('#days'), $groups=$('#slotGroups'), $calWrap=$('#calWrap');
 const todayStr = ymd(new Date());
 const state={
-  doctors:new Set(),        // 已選醫師集合
-  doctorsMaster:[],         // 醫師清單
+  doctorsMaster:[],         // 醫師清單（皆可＝全部）
   range:null,               // 可預約窗
   date:null,                // 目前選擇日期
   monthSummary:{},          // 當月摘要
@@ -274,14 +262,18 @@ async function boot(){
   drawCalendarShell();
 
   // 拉設定
-  const conf = await api('init');
-  state.range = conf.range;
-  state.doctorsMaster = conf.doctors||[];
-  $('#rangeNote').textContent = `可預約日：${fmtROC(conf.range.start)} ～ ${fmtROC(conf.range.end)}`;
+  calLoading(true);
+  try{
+    const conf = await api('init');
+    state.range = conf.range;
+    state.doctorsMaster = conf.doctors||[];
+    $('#rangeNote').textContent = `可預約日：${fmtROC(conf.range.start)} ～ ${fmtROC(conf.range.end)}`;
+  }finally{
+    calLoading(false);
+  }
 
-  renderDoctorChips();          // 預設皆可
-  await loadMonthSummary();     // 當月摘要
-  fillDiagnoses();              // 填診別
+  await loadMonthSummary();   // 當月摘要（皆可＝全部醫師）
+  fillDiagnoses();            // 填診別
 }
 
 /* 更新抬頭（本月標題＋今天）與箭頭可用狀態 */
@@ -290,42 +282,11 @@ function updateCalHead(){
   $('#calTitle').textContent = `${f.getFullYear()}年${f.getMonth()+1}月份`;
   $('#todayText').textContent = todayLabel();
 
-  // 限制只能看「本月」與「下個月」
+  // 限制只能看本月與下個月
   const nowFirst = firstOfMonth(new Date());
   const nextFirst = firstOfMonth(new Date(nowFirst.getFullYear(), nowFirst.getMonth()+1, 1));
   $('#btnPrev').disabled = f.getTime()<=nowFirst.getTime();
   $('#btnNext').disabled = f.getTime()>=nextFirst.getTime();
-}
-
-/* 醫師 chips：順序＝游志聰 → 江玉梅 → 皆可；預設皆可 */
-function renderDoctorChips(){
-  const order=['游志聰醫師','江玉梅醫師'];
-  const masters=[...order.filter(n=>state.doctorsMaster.includes(n))];
-  const box=$('#docFilters'); box.innerHTML='';
-
-  if(state.doctors.size===0) state.doctors=new Set(state.doctorsMaster);
-
-  masters.forEach(name=>{
-    const b=document.createElement('button');
-    b.type='button'; b.className='filter'; b.textContent=name;
-    if(state.doctors.size===1 && state.doctors.has(name)) b.setAttribute('aria-pressed','true');
-    b.onclick=async()=>{
-      state.doctors=new Set([name]); renderDoctorChips();
-      state.date=null; state.monthSummary={};
-      drawCalendarShell(); await loadMonthSummary(); fillDiagnoses(); renderGroups(); renderChosen();
-    };
-    box.appendChild(b);
-  });
-
-  const all=document.createElement('button'); all.type='button'; all.className='filter'; all.textContent='皆可';
-  const isAll=(state.doctors.size===state.doctorsMaster.length && state.doctorsMaster.length>0);
-  if(isAll) all.setAttribute('aria-pressed','true');
-  all.onclick=async()=>{
-    state.doctors=new Set(state.doctorsMaster); renderDoctorChips();
-    state.date=null; state.monthSummary={};
-    drawCalendarShell(); await loadMonthSummary(); fillDiagnoses(); renderGroups(); renderChosen();
-  };
-  box.appendChild(all);
 }
 
 /* 畫月曆殼（依 state.curMonth） */
@@ -345,24 +306,31 @@ function drawCalendarShell(){
   $days.innerHTML=html;
 }
 
-/* 整月摘要（含 0） */
+/* 整月摘要（含 0）— 以「全部醫師」查詢 */
 async function loadMonthSummary(){
   calLoading(true);
   try{
     const start=ymd(state.curMonth), end=ymd(endOfMonth(state.curMonth));
-    const res=await api('summary',{start,end,doctors:[...state.doctors]});
+    const res=await api('summary',{start,end,doctors:state.doctorsMaster});
     state.monthSummary = res.days||{};
   } finally { calLoading(false); }
 }
 
-/* 把診別塞回日格：今天起皆顯示；是否可點由「預約窗」決定 */
+/* 把診別塞回日格：今天起皆顯示；是否可點由「預約窗」決定；已過期顯示標籤 */
 function fillDiagnoses(){
   const inRange = state.range;
   $days.querySelectorAll('.day').forEach(el=>{
     const key=el.dataset.ymd, meta=el.querySelector('.meta'); if(!meta) return;
     meta.innerHTML='';
 
-    if(key < todayStr) return;
+    // 已過期（今天以前）：顯示「已過期」
+    if(key < todayStr){
+      const expired=document.createElement('div');
+      expired.className='expired'; expired.textContent='已過期';
+      meta.appendChild(expired);
+      el.classList.remove('clickable','disabled'); el.onclick=null;
+      return;
+    }
 
     const s = state.monthSummary[key] || {};
     if(!Object.keys(s).length) return;
@@ -390,10 +358,11 @@ async function renderGroups(){
   $groups.classList.add('loading');
   $groups.innerHTML='';
   try{
-    if(!state.date || state.doctors.size===0){
-      $groups.innerHTML='<div class="note">請先選擇醫師，並點選日期。</div>'; return;
+    if(!state.date){
+      $groups.innerHTML='<div class="note">請點選可預約的日期。</div>'; return;
     }
-    const res=await api('slots',{date:state.date, doctors:[...state.doctors]});
+    // 用「全部醫師」查
+    const res=await api('slots',{date:state.date, doctors:state.doctorsMaster});
     if(!res.groups.length){ $groups.innerHTML='<div class="note">當日無可預約時段或已額滿。</div>'; return; }
 
     res.groups.forEach(g=>{
