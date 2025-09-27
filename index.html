@@ -8,6 +8,7 @@
 <style>
 :root{
   --bg:#efe5da; --card:#fff; --line:#e0d4c7; --ink:#2a231b; --muted:#6f6a62;
+  /* 診別色：早/午/晚 */
   --early:#4f7f65; --noon:#b77a2a; --night:#3f6674;
   --brand:#6b5844;
   --slot-bd:#cbb7a2;
@@ -15,21 +16,23 @@
   --today:#a8927a;
   --disabled-bg:#ececec; --disabled-ink:#8f949d;
 
-  /* 淡色底（同色系） */
-  --early-tint:#e9f1ec;   /* 淡綠 */
-  --noon-tint:#f8efe3;    /* 淡橘 */
-  --night-tint:#e7eef1;   /* 淡藍灰 */
+  /* 已選卡片用的淡底（同色系） */
+  --early-tint:#e9f1ec;
+  --noon-tint:#f8efe3;
+  --night-tint:#e7eef1;
 
-  /* 停診 → 更醒目的紅 */
+  /* 停診標籤（棗紅/酒紅調，明顯） */
   --closed:#e60000;
 }
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Serif TC","Source Han Serif TC",serif}
 a,button{color:inherit;text-decoration:none;font-family:"Noto Serif TC","Source Han Serif TC",serif}
 
+/* 容器 */
 .container{max-width:880px;margin:18px auto;padding:0 14px}
 @media (max-width:600px){ .container{max-width:100%} }
 
+/* 標題 */
 .h1{display:flex;align-items:center;justify-content:center;gap:10px;font-weight:900;font-size:clamp(26px,4.8vw,40px);color:var(--brand)}
 .badge{background:var(--brand);color:#fff;border-radius:10px;width:42px;height:42px;display:grid;place-items:center;font-weight:900}
 
@@ -50,11 +53,11 @@ a,button{color:inherit;text-decoration:none;font-family:"Noto Serif TC","Source 
 .nav .arrow.prev::before{transform:rotate(135deg)}
 .nav .arrow.next::before{transform:rotate(-45deg)}
 
+/* 月曆本體 */
 .cal-wrap{position:relative}
 .grid7{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
 .wd{color:#8b8379;text-align:center;font-weight:800;font-size:.88rem}
 
-/* = 日期格 = */
 .day{
   min-height:92px;background:#fff;border:1px solid var(--line);border-radius:10px;
   display:flex;flex-direction:column;align-items:center;gap:6px;padding:6px;
@@ -68,24 +71,18 @@ a,button{color:inherit;text-decoration:none;font-family:"Noto Serif TC","Source 
 .day.selected{background:var(--sel-bg);border-color:var(--sel-bd);box-shadow:0 0 0 2px var(--sel-bd)}
 .day .d{font-weight:900;font-size:1rem}
 .meta{text-align:center;min-height:58px;display:flex;flex-direction:column;gap:4px;align-items:center;justify-content:flex-start}
-
-/* 讓不可預約日灰化 pill，但「停診」維持原色 */
-.day.disabled .blk:not(.closed){filter:grayscale(100%);opacity:.55}
+/* 不可預約的日子：一般標籤灰化；停診標籤保持紅色與不透明 */
+.day.disabled .blk{filter:grayscale(100%);opacity:.55}
 .day.disabled .blk.closed{filter:none;opacity:1}
 
 .expired{color:#9a948b;background:#eee;border:1px solid #e0d4c7;border-radius:999px;padding:2px 8px;font-size:.78rem;font-weight:900}
 
-/* = 標籤 = */
+/* 標籤 */
 .blk{display:inline-block;border-radius:8px;padding:3px 9px;font-size:.78rem;font-weight:900;color:#fff;line-height:1}
 .blk.early{background:var(--early)} .blk.noon{background:var(--noon)} .blk.night{background:var(--night)}
-.blk.closed{
-  background:var(--closed);
-  color:#fff;
-  border:1px solid #b30000;          /* 細框讓邊界更銳利 */
-  box-shadow:0 0 0 2px rgba(230,0,0,.06);
-}
+.blk.closed{background:var(--closed);color:#fff;border:1px solid #b30000;box-shadow:0 0 0 2px rgba(230,0,0,.06)}
 
-/* = 覆蓋式月曆 Loading = */
+/* 覆蓋月曆的轉圈圈 */
 #calLoading{
   position:absolute; inset:44px 12px 12px 12px; display:none;
   align-items:center; justify-content:center;
@@ -96,7 +93,7 @@ a,button{color:inherit;text-decoration:none;font-family:"Noto Serif TC","Source 
 .spin{width:22px;height:22px;border:3px solid #e8dccc;border-top-color:#5a4a3a;border-radius:50%;animation:sp .8s linear infinite}
 @keyframes sp{to{transform:rotate(360deg)}}
 
-/* = 手風琴 & slots = */
+/* 手風琴 + slots */
 .acc-item{border:1px solid var(--line);border-radius:12px;background:#fff;overflow:hidden}
 .acc-head{display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer}
 .acc-head .doc{font-weight:900}
@@ -117,15 +114,15 @@ a,button{color:inherit;text-decoration:none;font-family:"Noto Serif TC","Source 
 .slot[aria-pressed="true"].night{background:var(--night);color:#fff;border-color:var(--night)}
 .slot.disabled{background:var(--disabled-bg);color:var(--disabled-ink);border-color:#ddd;cursor:not-allowed;pointer-events:none}
 
-/* slots 小載入條 */
-#slotGroups{position:relative}
+/* slots 的小載入條 */
+#slotGroups{position:relative;display:grid;gap:10px}
 #slotGroups.loading{min-height:44px}
 #slotLoading{display:none;position:relative;margin:8px 0}
 #slotGroups.loading #slotLoading{display:flex}
-.mini-loader{display:flex;gap:10px;align-items:center;justify-content:center;border:1px solid var(--line);background:#fff;padding:8px 12px;border-radius:999px;font-weight:800;color:var(--brand)}
+.mini-loader{display:flex;gap:10px;align-items:center;justify-content:center;border:1px solid var(--line);background:#fff;padding:8px 12px;border-radius:12px;font-weight:800;color:var(--brand)}
 .mini-spin{width:16px;height:16px;border:3px solid #e8dccc;border-top-color:#5a4a3a;border-radius:50%;animation:sp .8s linear infinite}
 
-/* = 表單 & 已選卡片（淡色底＋黑字） = */
+/* 表單 & 已選卡片（淡底黑字） */
 .chosen{
   border:1px dashed #d9c9b6;background:#faf5ef;padding:12px;border-radius:12px;
   font-weight:800; box-shadow:0 2px 8px rgba(0,0,0,.06); transition:.15s
@@ -139,8 +136,9 @@ a,button{color:inherit;text-decoration:none;font-family:"Noto Serif TC","Source 
 .form{display:grid;gap:12px}
 .label{font-weight:900;margin-bottom:6px;color:#3f362c}
 .input{border:1px solid var(--line);border-radius:10px;height:46px;padding:0 .9rem;background:#fff;width:100%}
+
 .btn-stack{display:grid;gap:10px}
-.filter{border:1px solid var(--line);border-radius:12px;background:#fff;padding:.60rem .95rem;font-weight:900;cursor:pointer;font-size:1.02rem}
+.filter{border:1px solid var(--line);border-radius:12px;background:#fff;padding:.60rem .95rem;font-weight:900;cursor:pointer;font-size:1.02rem;text-align:center}
 .btn-solid{background:var(--brand);color:#fff;border-color:var(--brand)}
 .btn-ghost{background:#fff;color:var(--brand);border-color:var(--brand)}
 
@@ -179,7 +177,7 @@ a,button{color:inherit;text-decoration:none;font-family:"Noto Serif TC","Source 
     </div>
 
     <div class="tt" style="margin-top:12px">當日可預約（醫師 → 診別 → 15 分鐘）</div>
-    <div id="slotGroups" style="display:grid;gap:10px">
+    <div id="slotGroups">
       <div id="slotLoading" class="mini-loader"><div class="mini-spin"></div>載入中</div>
     </div>
   </div>
@@ -191,7 +189,7 @@ a,button{color:inherit;text-decoration:none;font-family:"Noto Serif TC","Source 
     <div class="form" style="margin-top:12px">
       <div>
         <div class="label">姓名 *</div>
-        <input id="name" class="input" placeholder="請輸入姓名"/>
+        <input id="name" class="input" placeholder="請輸入姓名" autocomplete="off"/>
       </div>
       <div>
         <div class="label">出生年月日 *</div>
@@ -199,35 +197,38 @@ a,button{color:inherit;text-decoration:none;font-family:"Noto Serif TC","Source 
       </div>
       <div>
         <div class="label">身分證字號 *</div>
-        <input id="idnum" class="input" maxlength="10" placeholder="A123456789"/>
+        <input id="idnum" class="input" maxlength="10" placeholder="A123456789" autocomplete="off"/>
       </div>
       <div>
         <div class="label">聯絡電話 *</div>
-        <input id="phone" class="input" maxlength="10" inputmode="numeric" placeholder="09xxxxxxxx"/>
+        <input id="phone" class="input" maxlength="10" inputmode="numeric" placeholder="09xxxxxxxx" autocomplete="off"/>
       </div>
 
       <label><input type="checkbox" id="agree"/> 我已閱讀並同意預約須知</label>
 
       <div class="btn-stack">
         <button class="filter btn-solid" id="submit">送出預約</button>
-        <button class="filter btn-ghost" id="btnQuery">查詢 / 取消預約</button>
+        <!-- 直接以連結前往查詢頁（方形小圓角；與首頁風格一致） -->
+        <a href="query.html" class="filter btn-ghost" id="btnQuery">查詢 / 取消預約</a>
       </div>
     </div>
   </div>
 </div>
 
 <script>
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwj2RLuzlroVFGNNp9drzAt1nEs3aF1jXDWwYL9sNjVOw0BQgp6Rgwhl1WVeuspVqPO/exec';
+/* 你的 GAS 網址（提供 init / summary / slots / reserve）*/
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzHMD1jFXowpT3jxc6PdPmD0PnrDE_xSYdM_4_iLf1mqU9uEZLDHiL0-_bi5zQm8Tt9/exec';
 
 const W=['日','一','二','三','四','五','六'];
 const $=s=>document.querySelector(s);
 const $wd=$('#wdRow'), $days=$('#days'), $groups=$('#slotGroups'), $calWrap=$('#calWrap');
 const todayStr = ymd(new Date());
 
-/* 前端快取 + 中止控制 */
+/* 前端簡易快取 + 中止控制（避免重複拉資料） */
 const cache={ summary:new Map(), slots:new Map(), init:null };
 let monthCtrl=null, slotsCtrl=null;
 
+/* 狀態 */
 const state={
   doctorsMaster:[],
   range:null,
@@ -488,7 +489,19 @@ $('#submit').onclick=async ()=>{
 
   await loadMonthSummary(); fillDiagnoses(); renderGroups();
 };
-$('#btnQuery').onclick=()=>{ alert('查詢 / 取消預約頁面稍後提供。'); };
+
+/* 身分證英文自動大寫；電話只允許數字 */
+$('#idnum').addEventListener('input',e=>{
+  const p=e.target.selectionStart;
+  e.target.value=e.target.value.toUpperCase();
+  try{ e.target.setSelectionRange(p,p);}catch(_){}
+});
+$('#phone').addEventListener('input',e=>{
+  const p=e.target.selectionStart;
+  const cleaned = String(e.target.value).replace(/\D/g,'').slice(0,10);
+  e.target.value = cleaned;
+  try{ const pos = Math.min(p, cleaned.length); e.target.setSelectionRange(pos, pos);}catch(_){}
+});
 
 /* 月份切換（本月/下月） */
 $('#btnPrev').addEventListener('click', async()=>{
