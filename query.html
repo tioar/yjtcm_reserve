@@ -4,9 +4,6 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>永濟中醫診所｜查詢／取消預約</title>
-
-<link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700;900&display=swap" rel="stylesheet">
 
 <style>
@@ -22,13 +19,20 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Serif TC",
 .badge{background:var(--brand);color:#fff;border-radius:10px;width:42px;height:42px;display:grid;place-items:center;font-weight:900}
 .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px}
 
-/* 表單與按鈕 */
+/* 表單與按鈕（方形小圓角，與首頁一致） */
 .label{font-weight:900;margin:8px 0 6px;color:#3f362c}
 .input{border:1px solid var(--line);border-radius:10px;height:46px;padding:0 .9rem;background:#fff;width:100%;font-size:16px}
-.btn{border-radius:999px;font-weight:900;padding:.9rem 1.15rem;font-size:1.05rem;cursor:pointer}
-.btn-main{background:var(--brand);color:#fff;border:1px solid var(--brand)}
-.btn-ghost{background:#fff;color:var(--brand);border:1px solid var(--brand)}
-.btn-danger{background:#dc3545;color:#fff;border:1px solid #dc3545}
+.btn{
+  border-radius:12px;                        /* 這裡改成小圓角 */
+  font-weight:900;
+  padding:.60rem .95rem;
+  font-size:1.02rem;
+  cursor:pointer;
+  border:1px solid var(--line);
+}
+.btn-main{background:var(--brand);color:#fff;border-color:var(--brand)}
+.btn-ghost{background:#fff;color:var(--brand);border-color:var(--brand)}
+.btn-danger{background:#dc3545;color:#fff;border-color:#dc3545}
 .btn[disabled]{opacity:.5;cursor:not-allowed}
 
 /* 結果表頭 + 列 */
@@ -74,7 +78,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Serif TC",
 </div>
 
 <script>
-/* === 設定你的 GAS 網址 === */
+/* 查詢/取消的 GAS 網址（需提供 queryByPid / cancelOne 兩個 action） */
 const API = "https://script.google.com/macros/s/AKfycbwj2RLuzlroVFGNNp9drzAt1nEs3aF1jXDWwYL9sNjVOw0BQgp6Rgwhl1WVeuspVqPO/exec";
 
 /* 身分證：嚴格檢核（含檢查碼） */
@@ -110,7 +114,7 @@ $pid.addEventListener('input',e=>{
 function showMask(txt){ $maskText.textContent=txt||'查詢中'; $mask.style.display='flex'; }
 function hideMask(){ $mask.style.display='none'; }
 
-/* slot → row 顏色用 */
+/* slot → row 顏色 */
 function slotKey(s){ return s.includes('早')?'early':s.includes('午')?'noon':'night'; }
 
 /* 查詢 */
@@ -143,7 +147,7 @@ function appendRow(item){
     <div>${item.doctor||''}</div>
     <div>${item.name||''}</div>
     <div>${item.num||''}</div>
-    <div><button class="btn btn-danger btn-sm" ${canCancel?'':'disabled'}>取消</button></div>
+    <div><button class="btn btn-danger" ${canCancel?'':'disabled'}>取消</button></div>
   `;
   row.querySelector('button').onclick = ()=>{ if(canCancel) cancelOne(item.row); };
   $list.appendChild(row);
