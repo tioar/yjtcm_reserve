@@ -12,19 +12,17 @@
   --early:#4f7f65; --noon:#b77a2a; --night:#3f6674;
   --brand:#6b5844; --brand-600:#5a4a3a;
   --slot-bd:#cbb7a2;
-  --sel-bg:#d9b99a; --sel-bd:#b88f6a;              /* 可選日期的選取（灰橘） */
-  --today:#a8927a;                                  /* 今天（加深一點點） */
-  --disabled-bg:#ececec; --disabled-ink:#8f949d;    /* 不可預約的灰底 */
+  --sel-bg:#d9b99a; --sel-bd:#b88f6a;
+  --today:#a8927a;
+  --disabled-bg:#ececec; --disabled-ink:#8f949d;
 }
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Serif TC","Source Han Serif TC",serif}
 a,button{color:inherit;text-decoration:none;font-family:"Noto Serif TC","Source Han Serif TC",serif}
 
-/* Desktop 稍窄；手機維持原樣 */
 .container{max-width:880px;margin:18px auto;padding:0 14px}
 @media (max-width:600px){ .container{max-width:100%} }
 
-/* 標題置中（字級加大） */
 .h1{display:flex;align-items:center;justify-content:center;gap:10px;font-weight:900;font-size:clamp(26px,4.8vw,40px);color:var(--brand)}
 .badge{background:var(--brand);color:#fff;border-radius:10px;width:42px;height:42px;display:grid;place-items:center;font-weight:900}
 
@@ -32,11 +30,10 @@ a,button{color:inherit;text-decoration:none;font-family:"Noto Serif TC","Source 
 .tt{font-weight:900;margin:6px 2px 10px;color:var(--brand)}
 .note{color:var(--muted);font-size:.92rem}
 
-/* 月曆抬頭（含今日 + 箭頭） */
 .cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:12px}
 .cal-left{display:flex;align-items:center;gap:12px}
 .cal-title{font-weight:900;color:var(--brand);font-size:clamp(18px,3.4vw,24px)}
-.today-text{color:#a47b55;font-weight:800} /* 淺棕色純文字 */
+.today-text{color:#a47b55;font-weight:800}
 .nav{display:flex;gap:8px;margin-left:auto}
 .nav .arrow{width:36px;height:36px;border:1px solid var(--line);border-radius:10px;background:#fff;display:grid;place-items:center;cursor:pointer}
 .nav .arrow:disabled{opacity:.4;cursor:not-allowed}
@@ -47,7 +44,6 @@ a,button{color:inherit;text-decoration:none;font-family:"Noto Serif TC","Source 
 .nav .arrow.prev::before{transform:rotate(135deg)}
 .nav .arrow.next::before{transform:rotate(-45deg)}
 
-/* 月曆 */
 .cal-wrap{position:relative}
 .grid7{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
 .wd{color:#8b8379;text-align:center;font-weight:800;font-size:.88rem}
@@ -58,19 +54,21 @@ a,button{color:inherit;text-decoration:none;font-family:"Noto Serif TC","Source 
   transition:background .15s,border-color .15s,box-shadow .15s;overflow:hidden
 }
 .day.clickable{cursor:pointer}
-.day.off{background:#f3ede6;color:#9a948b}                         /* 已過去（本月前段） */
-.day.today{background:var(--today);color:#fff;border-color:var(--today)} /* 今天（明顯一點） */
-.day.disabled{background:var(--disabled-bg);color:var(--disabled-ink)}   /* 不在預約窗內（含今天/未來） */
-.day.today.disabled{background:#d3cdc6;color:#5b5b5b;border-color:#c5bdb5} /* 今天但不可預約 → 灰且帶今天感 */
+.day.off{background:#f3ede6;color:#9a948b}
+.day.today{background:var(--today);color:#fff;border-color:var(--today)}
+.day.disabled{background:var(--disabled-bg);color:var(--disabled-ink)}
+.day.today.disabled{background:#d3cdc6;color:#5b5b5b;border-color:#c5bdb5}
 .day.selected{background:var(--sel-bg);border-color:var(--sel-bd);box-shadow:0 0 0 2px var(--sel-bd)}
 .day .d{font-weight:900;font-size:1rem}
 .meta{text-align:center;min-height:58px;display:flex;flex-direction:column;gap:4px;align-items:center;justify-content:flex-start}
-.day.disabled .blk{filter:grayscale(100%);opacity:.55}              /* 不可預約：診別方塊亦灰化 */
+.day.disabled .blk{filter:grayscale(100%);opacity:.55}
 .expired{color:#9a948b;background:#eee;border:1px solid #e0d4c7;border-radius:999px;padding:2px 8px;font-size:.78rem;font-weight:900}
 
-/* 月曆內診別方塊 */
+/* 標籤 */
 .blk{display:inline-block;border-radius:8px;padding:3px 9px;font-size:.78rem;font-weight:900;color:#fff;line-height:1}
 .blk.early{background:var(--early)} .blk.noon{background:var(--noon)} .blk.night{background:var(--night)}
+/* 停診紅標籤 */
+.blk.closed{background:#b3261e;color:#fff}
 
 /* 月曆轉圈圈（只蓋月曆） */
 #calLoading{position:absolute; inset:44px 12px 12px 12px; display:none; align-items:center; justify-content:center;
@@ -94,7 +92,7 @@ a,button{color:inherit;text-decoration:none;font-family:"Noto Serif TC","Source 
 .acc-body{display:none;padding:0 14px 12px 14px}
 .acc-item.open .acc-body{display:block}
 
-/* 15 分鐘時段卡：可選白、選中上色、不可選灰 */
+/* 15 分鐘時段卡 */
 .caps{margin-top:8px;display:flex;flex-wrap:wrap;gap:8px}
 .slot{border:1px solid var(--slot-bd);background:#fff;border-radius:10px;padding:.55rem 1rem;font-weight:800;cursor:pointer}
 .slot[aria-pressed="true"].early{background:var(--early);color:#fff;border-color:var(--early)}
@@ -102,7 +100,7 @@ a,button{color:inherit;text-decoration:none;font-family:"Noto Serif TC","Source 
 .slot[aria-pressed="true"].night{background:var(--night);color:#fff;border-color:var(--night)}
 .slot.disabled{background:var(--disabled-bg);color:var(--disabled-ink);border-color:#ddd;cursor:not-allowed;pointer-events:none}
 
-/* slots 區：改為轉圈圈 + 「載入中」 */
+/* slots：轉圈圈 + 「載入中」 */
 #slotGroups{position:relative}
 #slotGroups.loading{min-height:44px}
 #slotLoading{display:none;position:relative;margin:8px 0}
@@ -110,15 +108,11 @@ a,button{color:inherit;text-decoration:none;font-family:"Noto Serif TC","Source 
 .mini-loader{display:flex;gap:10px;align-items:center;justify-content:center;border:1px solid var(--line);background:#fff;padding:8px 12px;border-radius:999px;font-weight:800;color:var(--brand)}
 .mini-spin{width:16px;height:16px;border:3px solid #e8dccc;border-top-color:#5a4a3a;border-radius:50%;animation:sp .8s linear infinite}
 
-/* 已選摘要（精簡一行） */
-.chosen{border:1px dashed #d9c9b6;background:#faf5ef;padding:12px;border-radius:10px;font-weight:800}
-
 /* 表單 */
 .form{display:grid;gap:12px}
 .label{font-weight:900;margin-bottom:6px;color:#3f362c}
 .input{border:1px solid var(--line);border-radius:10px;height:46px;padding:0 .9rem;background:#fff;width:100%}
 
-/* 底部按鈕上下排列 */
 .btn-stack{display:grid;gap:10px}
 .filter{border:1px solid var(--line);border-radius:12px;background:#fff;padding:.60rem .95rem;font-weight:900;cursor:pointer;font-size:1.02rem}
 .btn-solid{background:var(--brand);color:#fff;border-color:var(--brand)}
@@ -188,7 +182,6 @@ a,button{color:inherit;text-decoration:none;font-family:"Noto Serif TC","Source 
 
       <label><input type="checkbox" id="agree"/> 我已閱讀並同意預約須知</label>
 
-      <!-- 兩顆按鈕：上下排列 -->
       <div class="btn-stack">
         <button class="filter btn-solid" id="submit">送出預約</button>
         <button class="filter btn-ghost" id="btnQuery">查詢 / 取消預約</button>
@@ -198,7 +191,7 @@ a,button{color:inherit;text-decoration:none;font-family:"Noto Serif TC","Source 
 </div>
 
 <script>
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyuXAhgPHX8QMSxZOJJgaj7LfryBRpw2npawiGmjgYsAlNDK4-uESEXpqak-o6mlZfP/exec'; // ← 改成你的 GAS 網址（GET 模式）
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbytWhINPme-7YQwqVu3eOXw1V06Vlosf74bO8Zyh_11XaKMr4IKtGKPuZeloHQ0WrDT/exec';
 
 const W=['日','一','二','三','四','五','六'];
 const $=s=>document.querySelector(s);
@@ -211,11 +204,11 @@ let monthCtrl=null; // 中止 summary
 let slotsCtrl=null; // 中止 slots
 
 const state={
-  doctorsMaster:[],         // 醫師清單（皆可＝全部）
-  range:null,               // 可預約窗
-  date:null,                // 目前選擇日期
-  monthSummary:{},          // 當月摘要
-  curMonth:firstOfMonth(new Date()) // 月曆目前在看的月份
+  doctorsMaster:[],
+  range:null,
+  date:null,
+  monthSummary:{},
+  curMonth:firstOfMonth(new Date())
 };
 
 /* Utils */
@@ -228,9 +221,8 @@ function fmtROC(dateStr){const [y,m,d]=dateStr.split('-').map(Number);const dt=n
 function todayLabel(){ const now=new Date(); return `${now.getMonth()+1}月${now.getDate()}日（${W[now.getDay()]}）`; }
 function calLoading(on){ $calWrap.classList.toggle('loading',!!on); }
 
-/* API：一律 GET，避免 preflight/CORS；含快取與中止控制 */
+/* API（含快取與中止控制） */
 async function api(action, params={}){
-  // 讀快取 key
   const key = action+':'+JSON.stringify(params);
   if(action==='summary' && cache.summary.has(key)) return cache.summary.get(key);
   if(action==='slots'   && cache.slots.has(key))   return cache.slots.get(key);
@@ -242,7 +234,6 @@ async function api(action, params={}){
     url.searchParams.set(k, Array.isArray(v)? v.join(',') : v);
   }
 
-  // 針對不同 action 使用各自的 AbortController
   let controller=null;
   if(action==='summary'){
     if(monthCtrl) monthCtrl.abort();
@@ -285,16 +276,10 @@ function tooWeirdBirthday(iso){
 
 /* Boot */
 async function boot(){
-  // 週標籤
   $wd.innerHTML=W.map(w=>`<div class="wd">${w}</div>`).join('');
-
-  // 抬頭：本月 + 今天（無年份、純文字）
   updateCalHead();
-
-  // 初始空殼（日格）
   drawCalendarShell();
 
-  // 拉設定
   calLoading(true);
   try{
     const conf = await api('init');
@@ -305,25 +290,24 @@ async function boot(){
     calLoading(false);
   }
 
-  await loadMonthSummary();   // 當月摘要（皆可＝全部醫師）
-  prefetchNextMonth();        // ★ 預抓下個月摘要
-  fillDiagnoses();            // 填診別
+  await loadMonthSummary();
+  prefetchNextMonth();
+  fillDiagnoses();
 }
 
-/* 更新抬頭（本月標題＋今天）與箭頭可用狀態 */
+/* 更新抬頭與箭頭可用狀態 */
 function updateCalHead(){
   const f = state.curMonth;
   $('#calTitle').textContent = `${f.getFullYear()}年${f.getMonth()+1}月份`;
   $('#todayText').textContent = todayLabel();
 
-  // 限制只能看本月與下個月
   const nowFirst = firstOfMonth(new Date());
   const nextFirst = firstOfMonth(new Date(nowFirst.getFullYear(), nowFirst.getMonth()+1, 1));
   $('#btnPrev').disabled = f.getTime()<=nowFirst.getTime();
   $('#btnNext').disabled = f.getTime()>=nextFirst.getTime();
 }
 
-/* 畫月曆殼（依 state.curMonth） */
+/* 畫月曆殼 */
 function drawCalendarShell(){
   const first = state.curMonth, last=endOfMonth(first), pad=first.getDay();
   let html=''; for(let i=0;i<pad;i++) html+=`<div class="day"></div>`;
@@ -340,35 +324,47 @@ function drawCalendarShell(){
   $days.innerHTML=html;
 }
 
-/* 整月摘要（含 0）— 以「全部醫師」查詢（含快取 + 中止） */
+/* 整月摘要（含 0；含 closed） */
 async function loadMonthSummary(){
   calLoading(true);
   try{
     const start=ymd(state.curMonth), end=ymd(endOfMonth(state.curMonth));
-    const data = await api('summary',{start,end,doctors:state.doctorsMaster});
-    state.monthSummary = (data.days||{});
+    const data=await api('summary',{start,end,doctors:state.doctorsMaster});
+    state.monthSummary = data.days||{};
   } finally { calLoading(false); }
 }
 
-/* ★ 預抓下一個月摘要（切月後更快） */
+/* 預抓下一個月 */
 function prefetchNextMonth(){
   const cur = state.curMonth;
   const next = firstOfMonth(new Date(cur.getFullYear(), cur.getMonth()+1, 1));
   const start=ymd(next), end=ymd(endOfMonth(next));
-  // 觸發但不阻擋 UI；快取內會保存
   api('summary',{start,end,doctors:state.doctorsMaster}).catch(()=>{});
 }
 
-/* 把診別塞回日格：今天起皆顯示；是否可點由「預約窗」決定；已過期顯示標籤 */
+/* 把診別塞回日格 + 停診標籤 */
 function fillDiagnoses(){
   const inRange = state.range;
-  const frag = document.createDocumentFragment();
-  // 直接遍歷已有格子
   $days.querySelectorAll('.day').forEach(el=>{
     const key=el.dataset.ymd, meta=el.querySelector('.meta'); if(!meta) return;
     meta.innerHTML='';
 
-    // 已過期（今天以前）：顯示「已過期」
+    const summary = state.monthSummary[key] || {};
+
+    // 停診
+    if(summary.closed){
+      const span=document.createElement('span');
+      span.className='blk closed';
+      span.textContent='停診';
+      if(summary.note) span.title=summary.note;
+      meta.appendChild(span);
+      el.classList.remove('clickable');
+      el.classList.add('disabled');
+      el.onclick=null;
+      return;
+    }
+
+    // 已過期
     if(key < todayStr){
       const expired=document.createElement('div');
       expired.className='expired'; expired.textContent='已過期';
@@ -377,12 +373,10 @@ function fillDiagnoses(){
       return;
     }
 
-    const s = state.monthSummary[key] || {};
-    if(Object.keys(s).length){
-      if(s.early!==undefined){ const span=document.createElement('span'); span.className='blk early'; span.textContent='早診'; meta.appendChild(span); }
-      if(s.noon !==undefined){ const span=document.createElement('span'); span.className='blk noon' ; span.textContent='午診'; meta.appendChild(span); }
-      if(s.night!==undefined){ const span=document.createElement('span'); span.className='blk night'; span.textContent='晚診'; meta.appendChild(span); }
-    }
+    // 三個診別（僅顯示有資料者）
+    if(summary.early!==undefined){ const s=document.createElement('span'); s.className='blk early'; s.textContent='早診'; meta.appendChild(s); }
+    if(summary.noon !==undefined){ const s=document.createElement('span'); s.className='blk noon';  s.textContent='午診'; meta.appendChild(s); }
+    if(summary.night!==undefined){ const s=document.createElement('span'); s.className='blk night'; s.textContent='晚診'; meta.appendChild(s); }
 
     const clickable = inRange && key>=inRange.start && key<=inRange.end;
     el.classList.toggle('clickable', clickable);
@@ -393,14 +387,12 @@ function fillDiagnoses(){
         el.classList.add('selected'); state.date=key; state.chosen=null; renderGroups(); renderChosen(); };
     }else{ el.onclick=null; }
   });
-  // frag 預留（目前未用）
-  void frag;
 }
 
 /* 當日列表（手風琴） */
 async function renderGroups(){
   $groups.classList.add('loading');
-  // 顯示上方小載入條，清空內容但保留 loader
+  // 清空既有內容但保留 loader
   $groups.querySelectorAll('.acc-item, .note').forEach(n=>n.remove());
   try{
     if(!state.date){
@@ -408,7 +400,18 @@ async function renderGroups(){
       $groups.appendChild(note); return;
     }
     const res=await api('slots',{date:state.date, doctors:state.doctorsMaster});
-    if(!res.groups.length){ const note=document.createElement('div'); note.className='note'; note.textContent='當日無可預約時段或已額滿。'; $groups.appendChild(note); return; }
+
+    if(res.closed){
+      const note=document.createElement('div'); note.className='note';
+      note.textContent = `本日停診${res.note? '（'+res.note+'）':''}。`;
+      $groups.appendChild(note); return;
+    }
+
+    if(!res.groups.length){
+      const note=document.createElement('div'); note.className='note';
+      note.textContent='當日無可預約時段或已額滿。';
+      $groups.appendChild(note); return;
+    }
 
     res.groups.forEach(g=>{
       const key = g.label.includes('早')?'early':(g.label.includes('午')?'noon':'night');
@@ -459,14 +462,14 @@ function* timeSlices(start,end,stepMin=15){
   while(t<E){ const h=pad2(Math.floor(t/60)), m=pad2(t%60); yield `${h}:${m}`; t+=stepMin; }
 }
 
-/* 已選摘要（精簡一行） */
+/* 已選摘要 */
 function renderChosen(){
   const box=$('#chosen');
   if(!state.chosen){ box.textContent='尚未選擇'; return; }
   box.textContent = `${fmtROC(state.chosen.date)}　時間：${state.chosen.time}（${state.chosen.label}｜${state.chosen.range}）　${state.chosen.doctor}`;
 }
 
-/* 送出 / 查詢（GET 以避開 preflight/CORS） */
+/* 送出（GET，避免 preflight） */
 $('#submit').onclick=async ()=>{
   const req={
     name:$('#name').value.trim(),
@@ -481,7 +484,7 @@ $('#submit').onclick=async ()=>{
   }
   if(!twIdValid(req.idnum)){ alert('身分證格式或檢查碼錯誤'); return; }
   if(tooWeirdBirthday(req.birthday)){ alert('生日超出限制'); return; }
-  $('#idnum').value = req.idnum; // 小寫自動轉大寫
+  $('#idnum').value = req.idnum;
 
   const url=new URL(SCRIPT_URL);
   url.searchParams.set('action','reserve');
@@ -491,12 +494,11 @@ $('#submit').onclick=async ()=>{
   if(data.ok){ alert(`預約成功！\n您的號碼：第 ${data.no} 號`); }
   else{ alert(`預約失敗：${data.msg||'未知錯誤'}`); }
 
-  // 重新拉當月摘要（更新剩餘）
   await loadMonthSummary(); fillDiagnoses(); renderGroups();
 };
 $('#btnQuery').onclick=()=>{ alert('查詢 / 取消預約頁面稍後提供。'); };
 
-/* 月份切換（僅允許本月與下月） */
+/* 月份切換（本月與下月） */
 $('#btnPrev').addEventListener('click', async()=>{
   state.curMonth = firstOfMonth(new Date(state.curMonth.getFullYear(), state.curMonth.getMonth()-1, 1));
   updateCalHead(); drawCalendarShell(); await loadMonthSummary(); fillDiagnoses(); state.date=null; renderGroups(); renderChosen();
