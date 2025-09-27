@@ -14,6 +14,11 @@
   --sel-bg:#d9b99a; --sel-bd:#b88f6a;
   --today:#a8927a;
   --disabled-bg:#ececec; --disabled-ink:#8f949d;
+  /* 新增：淡色底（同色系）與停診色 */
+  --early-tint:#e9f1ec;   /* 淡綠 */
+  --noon-tint:#f8efe3;    /* 淡橘 */
+  --night-tint:#e7eef1;   /* 淡藍灰 */
+  --closed:#7a2533;       /* 棗紅 / 酒紅（低彩度） */
 }
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Serif TC","Source Han Serif TC",serif}
@@ -60,13 +65,14 @@ a,button{color:inherit;text-decoration:none;font-family:"Noto Serif TC","Source 
 .day.selected{background:var(--sel-bg);border-color:var(--sel-bd);box-shadow:0 0 0 2px var(--sel-bd)}
 .day .d{font-weight:900;font-size:1rem}
 .meta{text-align:center;min-height:58px;display:flex;flex-direction:column;gap:4px;align-items:center;justify-content:flex-start}
-.day.disabled .blk{filter:grayscale(100%);opacity:.55}
+/* 原本灰化所有標籤 → 改成只灰化「非停診」的 */
+.day.disabled .blk:not(.closed){filter:grayscale(100%);opacity:.55}
 .expired{color:#9a948b;background:#eee;border:1px solid #e0d4c7;border-radius:999px;padding:2px 8px;font-size:.78rem;font-weight:900}
 
 /* = 標籤 = */
 .blk{display:inline-block;border-radius:8px;padding:3px 9px;font-size:.78rem;font-weight:900;color:#fff;line-height:1}
 .blk.early{background:var(--early)} .blk.noon{background:var(--noon)} .blk.night{background:var(--night)}
-.blk.closed{background:#b3261e;color:#fff}
+.blk.closed{background:var(--closed);color:#fff}  /* 停診固定棗紅 */
 
 /* = 覆蓋式月曆 Loading = */
 #calLoading{
@@ -100,7 +106,7 @@ a,button{color:inherit;text-decoration:none;font-family:"Noto Serif TC","Source 
 .slot[aria-pressed="true"].night{background:var(--night);color:#fff;border-color:var(--night)}
 .slot.disabled{background:var(--disabled-bg);color:var(--disabled-ink);border-color:#ddd;cursor:not-allowed;pointer-events:none}
 
-/* slots 小載入條：轉圈圈 + 文字 */
+/* slots 小載入條 */
 #slotGroups{position:relative}
 #slotGroups.loading{min-height:44px}
 #slotLoading{display:none;position:relative;margin:8px 0}
@@ -108,17 +114,17 @@ a,button{color:inherit;text-decoration:none;font-family:"Noto Serif TC","Source 
 .mini-loader{display:flex;gap:10px;align-items:center;justify-content:center;border:1px solid var(--line);background:#fff;padding:8px 12px;border-radius:999px;font-weight:800;color:var(--brand)}
 .mini-spin{width:16px;height:16px;border:3px solid #e8dccc;border-top-color:#5a4a3a;border-radius:50%;animation:sp .8s linear infinite}
 
-/* = 表單 & 已選卡片 = */
+/* = 表單 & 已選卡片（改淡色底＋黑字） = */
 .chosen{
   border:1px dashed #d9c9b6;background:#faf5ef;padding:12px;border-radius:12px;
   font-weight:800; box-shadow:0 2px 8px rgba(0,0,0,.06); transition:.15s
 }
-/* 診別配色：做成實心卡片 */
-.chosen.solid{border-style:solid;color:#fff}
-.chosen.solid.early{background:var(--early);border-color:var(--early)}
-.chosen.solid.noon {background:var(--noon); border-color:var(--noon)}
-.chosen.solid.night{background:var(--night);border-color:var(--night)}
-.chosen .sub{opacity:.95}
+/* 依診別淡色實心卡，文字改黑色 */
+.chosen.solid{border-style:solid;color:#111}
+.chosen.solid.early{background:var(--early-tint);border-color:var(--early)}
+.chosen.solid.noon {background:var(--noon-tint); border-color:var(--noon)}
+.chosen.solid.night{background:var(--night-tint);border-color:var(--night)}
+.chosen .sub{opacity:.85}
 
 .form{display:grid;gap:12px}
 .label{font-weight:900;margin-bottom:6px;color:#3f362c}
@@ -157,7 +163,7 @@ a,button{color:inherit;text-decoration:none;font-family:"Noto Serif TC","Source 
     <div class="grid7" id="wdRow"></div>
     <div class="grid7" id="days"></div>
 
-    <!-- ⬇ 覆蓋月曆的轉圈圈（只有「載入中」不加…） -->
+    <!-- 覆蓋月曆的轉圈圈 -->
     <div id="calLoading">
       <div class="loader"><div class="spin"></div>載入中</div>
     </div>
@@ -201,7 +207,7 @@ a,button{color:inherit;text-decoration:none;font-family:"Noto Serif TC","Source 
 </div>
 
 <script>
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyYOV9lC0U_YihtBOQO-ZjaqSZFfNqLa0w443IjAxounUhQwOsPnTxZdigcQ2ake6wx/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyuXAhgPHX8QMSxZOJJgaj7LfryBRpw2npawiGmjgYsAlNDK4-uESEXpqak-o6mlZfP/exec';
 
 const W=['日','一','二','三','四','五','六'];
 const $=s=>document.querySelector(s);
@@ -435,7 +441,7 @@ function* timeSlices(start,end,stepMin=15){
   while(t<E){ const h=pad2(Math.floor(t/60)), m=pad2(t%60); yield `${h}:${m}`; t+=stepMin; }
 }
 
-/* 已選摘要：加上診別配色卡片 */
+/* 已選摘要：淡色卡＋黑字 */
 function renderChosen(){
   const box=$('#chosen');
   box.classList.remove('solid','early','noon','night');
@@ -446,7 +452,7 @@ function renderChosen(){
   box.innerHTML = `${fmtROC(state.chosen.date)}　時間：<b>${state.chosen.time}</b>（${state.chosen.label}｜${state.chosen.range}）　<span class="sub">${state.chosen.doctor}</span>`;
 }
 
-/* 送出（GET，避免 preflight） */
+/* 送出（GET） */
 $('#submit').onclick=async ()=>{
   const req={
     name:$('#name').value.trim(),
